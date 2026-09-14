@@ -6,12 +6,12 @@ setup:
 check: lint test
 
 lint:
-	.venv/bin/ruff check src tests scripts
-	.venv/bin/ruff format --check src tests scripts
+	.venv/bin/ruff check .
+	.venv/bin/ruff format --check .
 
 fmt:
-	.venv/bin/ruff format src tests scripts
-	.venv/bin/ruff check --fix src tests scripts
+	.venv/bin/ruff format .
+	.venv/bin/ruff check --fix .
 
 test:
 	.venv/bin/pytest -q
