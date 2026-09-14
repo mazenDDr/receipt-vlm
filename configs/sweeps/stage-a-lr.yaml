@@ -1,0 +1,6 @@
+# Stage A: learning rate, at QLoRA r16 on the language model. The best dev F1 carries over to stage B.
+base: configs/train/qlora-r16-lm.yaml
+arms:
+  - {variant: qlora-r16-lm}                                # lr 2e-4 (the base config)
+  - {variant: qlora-r16-lm-lr1e4, learning_rate: 0.0001}
+  - {variant: qlora-r16-lm-lr4e4, learning_rate: 0.0004}
