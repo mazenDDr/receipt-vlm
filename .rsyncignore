@@ -1,0 +1,15 @@
+# Never pushed to gpu-box, and never deleted there by `rsync --delete`.
+data/
+outputs/
+models/
+wandb/
+__pycache__/
+*.pyc
+.git/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.ipynb_checkpoints/
+.DS_Store
