@@ -51,7 +51,7 @@ def test_image_kwargs_use_the_size_form():
 
 
 def test_bnb_keeps_lm_head_and_by_default_the_vision_tower_in_bf16():
-    assert runner.bnb_skip_modules(quantize_vision=False) == ["lm_head", "visual"]
+    assert runner.bnb_skip_modules(quantize_vision=False) == ["lm_head", "model.visual"]
     assert runner.bnb_skip_modules(quantize_vision=True) == ["lm_head"]
 
 

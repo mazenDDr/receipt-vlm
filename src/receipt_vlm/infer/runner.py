@@ -48,8 +48,12 @@ def check_image_cap(grid: Sequence[Sequence[int]], patch_size: int, max_pixels: 
 
 
 def bnb_skip_modules(quantize_vision: bool) -> list[str]:
-    """Modules bitsandbytes keeps in bf16. Any list replaces the default one, so lm_head is listed too."""
-    return ["lm_head"] if quantize_vision else ["lm_head", "visual"]
+    """Modules bitsandbytes keeps in bf16. Any list replaces the default one, so lm_head is listed too.
+
+    transformers 5.8 matches these from the start of the module name (re.match, "name." prefix, endswith),
+    so the vision tower must be "model.visual": a bare "visual" matched nothing and the tower was quantized.
+    """
+    return ["lm_head"] if quantize_vision else ["lm_head", "model.visual"]
 
 
 def check_vision_precision(model: Any, quantize_vision: bool) -> None:
