@@ -18,7 +18,7 @@ class ReceiptExample(BaseModel):
     image_sha256: str
     width: int
     height: int
-    target: dict[str, Any]  # CORD gt_parse, whitespace-normalized, otherwise unchanged
+    target: dict[str, Any]  # CORD gt_parse exactly as labeled; eval/ does all normalization
     n_fields: int  # leaf (key, value) pairs in target
 
 
@@ -52,4 +52,5 @@ class ExampleScore(BaseModel):
     overall: FieldCounts
     numeric: FieldCounts
     text: FieldCounts
+    numeric_lenient: FieldCounts | None = None  # numeric keys compared after eval.normalize.lenient
     ted_accuracy: float | None = None
