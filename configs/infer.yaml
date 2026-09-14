@@ -1,6 +1,7 @@
 model: Qwen/Qwen2.5-VL-3B-Instruct
 adapter: null
 precision: bf16
+quantize_vision: false  # with nf4, keep the frozen vision tower in bf16 (as in training)
 variant: base-bf16
 split: dev
 examples_path: data/processed/examples.jsonl

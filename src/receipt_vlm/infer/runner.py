@@ -21,6 +21,7 @@ class InferConfig(BaseModel):
     model: str = "Qwen/Qwen2.5-VL-3B-Instruct"
     adapter: str | None = None  # LoRA adapter dir for fine-tuned variants
     precision: Literal["bf16", "nf4"] = "bf16"
+    quantize_vision: bool = False  # with nf4, keep the frozen vision tower in bf16 (as in training)
     variant: str = "base-bf16"
     split: Literal["train", "dev", "test"] = "dev"
     examples_path: str = "data/processed/examples.jsonl"
@@ -34,9 +35,9 @@ class InferConfig(BaseModel):
     attn_implementation: str = "sdpa"
 
 
-def image_kwargs(cfg: InferConfig) -> dict[str, Any]:
+def image_kwargs(min_pixels: int, max_pixels: int) -> dict[str, Any]:
     # transformers 5.8 silently ignores `max_pixels` and a load-time `size=`; only this per-call form works.
-    return {"size": {"shortest_edge": cfg.min_pixels, "longest_edge": cfg.max_pixels}}
+    return {"size": {"shortest_edge": min_pixels, "longest_edge": max_pixels}}
 
 
 def check_image_cap(grid: Sequence[Sequence[int]], patch_size: int, max_pixels: int) -> None:
@@ -44,6 +45,18 @@ def check_image_cap(grid: Sequence[Sequence[int]], patch_size: int, max_pixels: 
     worst = max(int(h) * int(w) * patch_size**2 for _, h, w in grid)
     if worst > max_pixels:
         raise RuntimeError(f"image resized to {worst} pixels, above max_pixels={max_pixels}; cap was ignored")
+
+
+def bnb_skip_modules(quantize_vision: bool) -> list[str]:
+    """Modules bitsandbytes keeps in bf16. Any list replaces the default one, so lm_head is listed too."""
+    return ["lm_head"] if quantize_vision else ["lm_head", "visual"]
+
+
+def check_vision_precision(model: Any, quantize_vision: bool) -> None:
+    """Fail loudly if the vision tower's precision isn't what the config asked for."""
+    n_4bit = sum(type(m).__name__ == "Linear4bit" for n, m in model.named_modules() if ".visual." in f".{n}.")
+    if quantize_vision != (n_4bit > 0):
+        raise RuntimeError(f"vision tower has {n_4bit} 4-bit layers but quantize_vision={quantize_vision}")
 
 
 def generated_tokens(ids: Sequence[int], eos_ids: set[int]) -> list[int]:
@@ -65,6 +78,7 @@ def load(cfg: InferConfig) -> tuple[Any, Any]:
             bnb_4bit_quant_type="nf4",
             bnb_4bit_use_double_quant=True,
             bnb_4bit_compute_dtype=torch.bfloat16,
+            llm_int8_skip_modules=bnb_skip_modules(cfg.quantize_vision),
         )
     model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
         cfg.model,
@@ -73,6 +87,8 @@ def load(cfg: InferConfig) -> tuple[Any, Any]:
         attn_implementation=cfg.attn_implementation,
         quantization_config=quantization,
     )
+    if cfg.precision == "nf4":
+        check_vision_precision(model, cfg.quantize_vision)
     if cfg.adapter:
         from peft import PeftModel
 
@@ -106,7 +122,7 @@ def predict(
             images=images,
             return_tensors="pt",
             padding=True,
-            images_kwargs=image_kwargs(cfg),
+            images_kwargs=image_kwargs(cfg.min_pixels, cfg.max_pixels),
         )
         check_image_cap(enc["image_grid_thw"].tolist(), processor.image_processor.patch_size, cfg.max_pixels)
         enc = enc.to(model.device)

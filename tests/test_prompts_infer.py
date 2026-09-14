@@ -47,8 +47,12 @@ def test_image_cap_check_catches_an_ignored_cap():
 
 
 def test_image_kwargs_use_the_size_form():
-    cfg = runner.InferConfig(max_pixels=200704)
-    assert runner.image_kwargs(cfg) == {"size": {"shortest_edge": 3136, "longest_edge": 200704}}
+    assert runner.image_kwargs(3136, 200704) == {"size": {"shortest_edge": 3136, "longest_edge": 200704}}
+
+
+def test_bnb_keeps_lm_head_and_by_default_the_vision_tower_in_bf16():
+    assert runner.bnb_skip_modules(quantize_vision=False) == ["lm_head", "visual"]
+    assert runner.bnb_skip_modules(quantize_vision=True) == ["lm_head"]
 
 
 def test_run_stats_and_render():
