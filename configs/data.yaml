@@ -1,0 +1,4 @@
+raw_dir: data/raw/cord-v2
+out_dir: data/processed
+hash_size: 16
+near_dup_max_distance: 20
