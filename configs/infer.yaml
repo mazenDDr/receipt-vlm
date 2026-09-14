@@ -1,0 +1,13 @@
+model: Qwen/Qwen2.5-VL-3B-Instruct
+adapter: null
+precision: bf16
+variant: base-bf16
+split: dev
+examples_path: data/processed/examples.jsonl
+min_pixels: 3136
+max_pixels: 802816  # 1024 * 28 * 28; picked in T3 from dev F1 vs. image tokens
+max_new_tokens: 1024  # set from target-token stats (T1 data report)
+repetition_penalty: 1.0  # plain greedy; Qwen's default 1.05 penalizes repeated digits
+batch_size: 1
+limit: null
+attn_implementation: sdpa
