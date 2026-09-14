@@ -8,10 +8,10 @@ __pycache__/
 .env.*
 .DS_Store
 
-# live only on the GPU machine
-data/
-models/
-wandb/
+# live only on the GPU machine (anchored, so src/receipt_vlm/data/ is still tracked)
+/data/
+/models/
+/wandb/
 
 # outputs are pulled from the GPU machine; only the small run summaries are committed
 outputs/*
