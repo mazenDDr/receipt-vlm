@@ -62,14 +62,18 @@ def example_from_row(row: dict[str, Any], cord_split: str, index: int, out_dir: 
 def build(
     rows_by_split: Iterable[tuple[str, Iterable[dict[str, Any]]]], out_dir: Path
 ) -> list[ReceiptExample]:
-    """Write every example's image and `out_dir/examples.jsonl`; returns the examples in file order."""
+    """Write every example's image and `out_dir/examples_all.jsonl` (before the leakage exclusions)."""
     examples = [
         example_from_row(row, cord_split, index, out_dir)
         for cord_split, rows in rows_by_split
         for index, row in enumerate(rows)
     ]
-    (out_dir / "examples.jsonl").write_text("".join(e.model_dump_json() + "\n" for e in examples))
+    write_examples(examples, out_dir / "examples_all.jsonl")
     return examples
+
+
+def write_examples(examples: Iterable[ReceiptExample], path: Path) -> None:
+    path.write_text("".join(e.model_dump_json() + "\n" for e in examples))
 
 
 def load_examples(path: str | Path) -> list[ReceiptExample]:

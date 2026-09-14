@@ -37,7 +37,16 @@ def test_build_writes_original_bytes_and_stable_ids(tmp_path):
     assert (tmp_path / "images" / "cord-test-0000.png").read_bytes() == _png(4)
     assert examples[0].target == TARGET and examples[0].n_fields == 3
     assert (examples[0].width, examples[0].height) == (60, 90)
-    assert build.load_examples(tmp_path / "examples.jsonl") == examples
+    assert build.load_examples(tmp_path / "examples_all.jsonl") == examples
+
+
+def test_exclusions_drop_the_earlier_split_copy_and_keep_test_whole(tmp_path):
+    # same image bytes: train-0000 = validation-0000, and validation-0001 = test-0000
+    rows = [("train", [_row(1), _row(2)]), ("validation", [_row(1), _row(3)]), ("test", [_row(3), _row(4)])]
+    examples = build.build(rows, tmp_path)
+    hashes = {e.example_id: dedup.dhash(Image.open(e.image_path)) for e in examples}
+    dropped = dedup.exclusions(dedup.nearest_pairs(examples, hashes, max_distance=0))
+    assert sorted(dropped) == ["cord-train-0000", "cord-validation-0001"]
 
 
 def test_dhash_finds_copies_across_splits_but_not_within(tmp_path):

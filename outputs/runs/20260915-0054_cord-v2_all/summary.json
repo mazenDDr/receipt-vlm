@@ -1,0 +1,633 @@
+{
+  "splits": {
+    "train": {
+      "receipts": 773,
+      "fields": 10613,
+      "numeric_share": 0.7783849995288796,
+      "fields_per_receipt": {
+        "min": 3.0,
+        "p50": 11.0,
+        "p95": 32.0,
+        "max": 71.0
+      },
+      "width": {
+        "min": 204.0,
+        "p50": 864.0,
+        "p95": 2304.0,
+        "max": 3024.0
+      },
+      "height": {
+        "min": 364.0,
+        "p50": 1296.0,
+        "p95": 4096.0,
+        "max": 4224.0
+      },
+      "megapixels": {
+        "min": 0.085272,
+        "p50": 1.119744,
+        "p95": 9.437184,
+        "max": 12.192768
+      },
+      "key_paths": [
+        "menu.cnt",
+        "menu.discountprice",
+        "menu.etc",
+        "menu.itemsubtotal",
+        "menu.nm",
+        "menu.num",
+        "menu.price",
+        "menu.sub.cnt",
+        "menu.sub.nm",
+        "menu.sub.price",
+        "menu.sub.unitprice",
+        "menu.unitprice",
+        "menu.vatyn",
+        "sub_total.discount_price",
+        "sub_total.etc",
+        "sub_total.othersvc_price",
+        "sub_total.service_price",
+        "sub_total.subtotal_price",
+        "sub_total.tax_price",
+        "total.cashprice",
+        "total.changeprice",
+        "total.creditcardprice",
+        "total.emoneyprice",
+        "total.menuqty_cnt",
+        "total.menutype_cnt",
+        "total.total_etc",
+        "total.total_price",
+        "void_menu.nm",
+        "void_menu.price"
+      ],
+      "target_tokens": {
+        "min": 30.0,
+        "p50": 99.0,
+        "p95": 261.5999999999999,
+        "max": 573.0
+      }
+    },
+    "dev": {
+      "receipts": 99,
+      "fields": 1187,
+      "numeric_share": 0.7784330244313395,
+      "fields_per_receipt": {
+        "min": 4.0,
+        "p50": 11.0,
+        "p95": 21.399999999999977,
+        "max": 40.0
+      },
+      "width": {
+        "min": 418.0,
+        "p50": 864.0,
+        "p95": 2304.0,
+        "max": 2376.0
+      },
+      "height": {
+        "min": 648.0,
+        "p50": 1296.0,
+        "p95": 4096.0,
+        "max": 4224.0
+      },
+      "megapixels": {
+        "min": 0.279936,
+        "p50": 1.119744,
+        "p95": 9.437184,
+        "max": 10.036224
+      },
+      "key_paths": [
+        "menu.cnt",
+        "menu.discountprice",
+        "menu.nm",
+        "menu.num",
+        "menu.price",
+        "menu.sub.cnt",
+        "menu.sub.nm",
+        "menu.sub.price",
+        "menu.unitprice",
+        "menu.vatyn",
+        "sub_total.discount_price",
+        "sub_total.etc",
+        "sub_total.service_price",
+        "sub_total.subtotal_price",
+        "sub_total.tax_price",
+        "total.cashprice",
+        "total.changeprice",
+        "total.creditcardprice",
+        "total.emoneyprice",
+        "total.menuqty_cnt",
+        "total.menutype_cnt",
+        "total.total_etc",
+        "total.total_price"
+      ],
+      "target_tokens": {
+        "min": 37.0,
+        "p50": 100.0,
+        "p95": 176.79999999999995,
+        "max": 323.0
+      }
+    },
+    "test": {
+      "receipts": 100,
+      "fields": 1301,
+      "numeric_share": 0.7770945426594927,
+      "fields_per_receipt": {
+        "min": 5.0,
+        "p50": 11.0,
+        "p95": 31.049999999999997,
+        "max": 43.0
+      },
+      "width": {
+        "min": 228.0,
+        "p50": 864.0,
+        "p95": 2304.0,
+        "max": 3024.0
+      },
+      "height": {
+        "min": 336.0,
+        "p50": 1296.0,
+        "p95": 4096.0,
+        "max": 4096.0
+      },
+      "megapixels": {
+        "min": 0.076608,
+        "p50": 1.119744,
+        "p95": 9.437184,
+        "max": 12.192768
+      },
+      "key_paths": [
+        "menu.cnt",
+        "menu.discountprice",
+        "menu.etc",
+        "menu.itemsubtotal",
+        "menu.nm",
+        "menu.num",
+        "menu.price",
+        "menu.sub.cnt",
+        "menu.sub.nm",
+        "menu.sub.price",
+        "menu.unitprice",
+        "sub_total.discount_price",
+        "sub_total.etc",
+        "sub_total.service_price",
+        "sub_total.subtotal_price",
+        "sub_total.tax_price",
+        "total.cashprice",
+        "total.changeprice",
+        "total.creditcardprice",
+        "total.emoneyprice",
+        "total.menuqty_cnt",
+        "total.menutype_cnt",
+        "total.total_etc",
+        "total.total_price"
+      ],
+      "target_tokens": {
+        "min": 46.0,
+        "p50": 102.5,
+        "p95": 233.34999999999997,
+        "max": 368.0
+      }
+    }
+  },
+  "leakage": {
+    "hash_bits": 256,
+    "cross_split_exact": 0,
+    "cross_split_pairs_within_max_distance": 28,
+    "max_distance": 20,
+    "pairs": [
+      {
+        "a": "cord-train-0015",
+        "b": "cord-validation-0035",
+        "splits": [
+          "train",
+          "dev"
+        ],
+        "distance": 0,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0044",
+        "b": "cord-test-0075",
+        "splits": [
+          "train",
+          "test"
+        ],
+        "distance": 0,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0107",
+        "b": "cord-test-0086",
+        "splits": [
+          "train",
+          "test"
+        ],
+        "distance": 0,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0221",
+        "b": "cord-validation-0006",
+        "splits": [
+          "train",
+          "dev"
+        ],
+        "distance": 0,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0234",
+        "b": "cord-validation-0030",
+        "splits": [
+          "train",
+          "dev"
+        ],
+        "distance": 0,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0354",
+        "b": "cord-test-0079",
+        "splits": [
+          "train",
+          "test"
+        ],
+        "distance": 0,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0420",
+        "b": "cord-validation-0098",
+        "splits": [
+          "train",
+          "dev"
+        ],
+        "distance": 0,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0428",
+        "b": "cord-test-0044",
+        "splits": [
+          "train",
+          "test"
+        ],
+        "distance": 0,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0489",
+        "b": "cord-validation-0067",
+        "splits": [
+          "train",
+          "dev"
+        ],
+        "distance": 0,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0733",
+        "b": "cord-validation-0089",
+        "splits": [
+          "train",
+          "dev"
+        ],
+        "distance": 0,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0785",
+        "b": "cord-test-0031",
+        "splits": [
+          "train",
+          "test"
+        ],
+        "distance": 0,
+        "exact": false
+      },
+      {
+        "a": "cord-validation-0059",
+        "b": "cord-test-0038",
+        "splits": [
+          "dev",
+          "test"
+        ],
+        "distance": 0,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0056",
+        "b": "cord-validation-0065",
+        "splits": [
+          "train",
+          "dev"
+        ],
+        "distance": 1,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0251",
+        "b": "cord-test-0050",
+        "splits": [
+          "train",
+          "test"
+        ],
+        "distance": 1,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0325",
+        "b": "cord-validation-0045",
+        "splits": [
+          "train",
+          "dev"
+        ],
+        "distance": 1,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0426",
+        "b": "cord-test-0029",
+        "splits": [
+          "train",
+          "test"
+        ],
+        "distance": 1,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0589",
+        "b": "cord-test-0028",
+        "splits": [
+          "train",
+          "test"
+        ],
+        "distance": 1,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0765",
+        "b": "cord-test-0080",
+        "splits": [
+          "train",
+          "test"
+        ],
+        "distance": 1,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0797",
+        "b": "cord-test-0033",
+        "splits": [
+          "train",
+          "test"
+        ],
+        "distance": 1,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0084",
+        "b": "cord-validation-0053",
+        "splits": [
+          "train",
+          "dev"
+        ],
+        "distance": 2,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0353",
+        "b": "cord-validation-0036",
+        "splits": [
+          "train",
+          "dev"
+        ],
+        "distance": 2,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0627",
+        "b": "cord-validation-0096",
+        "splits": [
+          "train",
+          "dev"
+        ],
+        "distance": 2,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0766",
+        "b": "cord-test-0069",
+        "splits": [
+          "train",
+          "test"
+        ],
+        "distance": 2,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0283",
+        "b": "cord-validation-0028",
+        "splits": [
+          "train",
+          "dev"
+        ],
+        "distance": 3,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0648",
+        "b": "cord-test-0067",
+        "splits": [
+          "train",
+          "test"
+        ],
+        "distance": 3,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0006",
+        "b": "cord-test-0095",
+        "splits": [
+          "train",
+          "test"
+        ],
+        "distance": 4,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0483",
+        "b": "cord-validation-0097",
+        "splits": [
+          "train",
+          "dev"
+        ],
+        "distance": 5,
+        "exact": false
+      },
+      {
+        "a": "cord-train-0133",
+        "b": "cord-test-0025",
+        "splits": [
+          "train",
+          "test"
+        ],
+        "distance": 7,
+        "exact": false
+      }
+    ],
+    "nearest_other_split_distance": {
+      "min": 0.0,
+      "p50": 78.0,
+      "p95": 97.0,
+      "max": 102.0
+    },
+    "exact_duplicates_within_a_split": 2,
+    "receipts_before_exclusion": {
+      "train": 800,
+      "dev": 100,
+      "test": 100
+    },
+    "excluded": [
+      {
+        "example_id": "cord-train-0006",
+        "copy_of": "cord-test-0095",
+        "distance": 4
+      },
+      {
+        "example_id": "cord-train-0015",
+        "copy_of": "cord-validation-0035",
+        "distance": 0
+      },
+      {
+        "example_id": "cord-train-0044",
+        "copy_of": "cord-test-0075",
+        "distance": 0
+      },
+      {
+        "example_id": "cord-train-0056",
+        "copy_of": "cord-validation-0065",
+        "distance": 1
+      },
+      {
+        "example_id": "cord-train-0084",
+        "copy_of": "cord-validation-0053",
+        "distance": 2
+      },
+      {
+        "example_id": "cord-train-0107",
+        "copy_of": "cord-test-0086",
+        "distance": 0
+      },
+      {
+        "example_id": "cord-train-0133",
+        "copy_of": "cord-test-0025",
+        "distance": 7
+      },
+      {
+        "example_id": "cord-train-0221",
+        "copy_of": "cord-validation-0006",
+        "distance": 0
+      },
+      {
+        "example_id": "cord-train-0234",
+        "copy_of": "cord-validation-0030",
+        "distance": 0
+      },
+      {
+        "example_id": "cord-train-0251",
+        "copy_of": "cord-test-0050",
+        "distance": 1
+      },
+      {
+        "example_id": "cord-train-0283",
+        "copy_of": "cord-validation-0028",
+        "distance": 3
+      },
+      {
+        "example_id": "cord-train-0325",
+        "copy_of": "cord-validation-0045",
+        "distance": 1
+      },
+      {
+        "example_id": "cord-train-0353",
+        "copy_of": "cord-validation-0036",
+        "distance": 2
+      },
+      {
+        "example_id": "cord-train-0354",
+        "copy_of": "cord-test-0079",
+        "distance": 0
+      },
+      {
+        "example_id": "cord-train-0420",
+        "copy_of": "cord-validation-0098",
+        "distance": 0
+      },
+      {
+        "example_id": "cord-train-0426",
+        "copy_of": "cord-test-0029",
+        "distance": 1
+      },
+      {
+        "example_id": "cord-train-0428",
+        "copy_of": "cord-test-0044",
+        "distance": 0
+      },
+      {
+        "example_id": "cord-train-0483",
+        "copy_of": "cord-validation-0097",
+        "distance": 5
+      },
+      {
+        "example_id": "cord-train-0489",
+        "copy_of": "cord-validation-0067",
+        "distance": 0
+      },
+      {
+        "example_id": "cord-train-0589",
+        "copy_of": "cord-test-0028",
+        "distance": 1
+      },
+      {
+        "example_id": "cord-train-0627",
+        "copy_of": "cord-validation-0096",
+        "distance": 2
+      },
+      {
+        "example_id": "cord-train-0648",
+        "copy_of": "cord-test-0067",
+        "distance": 3
+      },
+      {
+        "example_id": "cord-train-0733",
+        "copy_of": "cord-validation-0089",
+        "distance": 0
+      },
+      {
+        "example_id": "cord-train-0765",
+        "copy_of": "cord-test-0080",
+        "distance": 1
+      },
+      {
+        "example_id": "cord-train-0766",
+        "copy_of": "cord-test-0069",
+        "distance": 2
+      },
+      {
+        "example_id": "cord-train-0785",
+        "copy_of": "cord-test-0031",
+        "distance": 0
+      },
+      {
+        "example_id": "cord-train-0797",
+        "copy_of": "cord-test-0033",
+        "distance": 1
+      },
+      {
+        "example_id": "cord-validation-0059",
+        "copy_of": "cord-test-0038",
+        "distance": 0
+      }
+    ]
+  }
+}

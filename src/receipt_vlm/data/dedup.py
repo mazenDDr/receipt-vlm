@@ -60,3 +60,18 @@ def nearest_distance(examples: list[ReceiptExample], hashes: dict[str, int]) -> 
         others = [hamming(hashes[x.example_id], hashes[y.example_id]) for y in examples if y.split != x.split]
         out[x.example_id] = min(others, default=-1)
     return out
+
+
+_SPLIT_ORDER = {"train": 0, "dev": 1, "test": 2}
+
+
+def exclusions(pairs: list[Pair]) -> dict[str, Pair]:
+    """Which receipt of each cross-split copy to drop: the train copy, or the dev copy of a dev/test pair.
+
+    The official test split stays whole, so results stay comparable with published CORD numbers.
+    """
+    out: dict[str, Pair] = {}
+    for p in pairs:
+        drop = p.a if _SPLIT_ORDER[p.splits[0]] < _SPLIT_ORDER[p.splits[1]] else p.b
+        out.setdefault(drop, p)
+    return out
