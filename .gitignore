@@ -21,3 +21,4 @@ outputs/runs/*
 outputs/runs/*/*
 !outputs/runs/*/summary.json
 !outputs/runs/*/report.md
+!outputs/runs/*/train_summary.json

@@ -1,0 +1,26 @@
+variant: qlora-r16-lm
+precision: nf4           # QLoRA: 4-bit NF4 language model, vision tower kept in bf16
+quantize_vision: false
+method: lora
+targets: lm              # lm | lm+merger (adapt the vision projector too)
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.05
+learning_rate: 0.0002
+epochs: 2
+batch_size: 1
+grad_accum: 8
+warmup_ratio: 0.05
+weight_decay: 0.0
+lr_scheduler: cosine
+optim: adamw_torch
+min_pixels: 3136
+max_pixels: 802816       # same as inference
+max_new_tokens: 1024     # target JSON is at most 573 tokens (data report)
+eval_limit: 30           # dev receipts scored after each epoch; all 99 at the end
+num_workers: 4
+seed: 0
+report_to: wandb
+wandb_entity: khaledmazen456
+wandb_project: receipt-vlm
+wandb_mode: offline      # the personal entity doesn't exist yet (404); runs are kept on disk for `wandb sync`
