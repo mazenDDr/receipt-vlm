@@ -22,7 +22,7 @@ LOG=outputs/$SESSION.log
 ENV_SETUP='export PATH=$HOME/miniconda3/envs/main/bin:/usr/lib/wsl/lib:$PATH PYTHONUNBUFFERED=1 PYTHONPATH=src'
 
 push() {
-  ssh "$HOST" "mkdir -p $REMOTE_DIR"
+  ssh -n "$HOST" "mkdir -p $REMOTE_DIR"   # -n: don't eat stdin meant for `./gpu exec python - <<EOF`
   rsync -az --delete --exclude-from=.rsyncignore ./ "$HOST:$REMOTE_DIR/"
 }
 
