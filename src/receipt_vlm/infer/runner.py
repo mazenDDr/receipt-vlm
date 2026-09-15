@@ -33,6 +33,10 @@ class InferConfig(BaseModel):
     batch_size: int = 1
     limit: int | None = None
     attn_implementation: str = "sdpa"
+    backend: Literal["hf", "vllm"] = "hf"  # vllm: checkpoints that need its 4-bit kernels (AWQ W4A16)
+    # vLLM only: it reserves this share of GPU memory up front, and caps prompt + answer length
+    gpu_memory_utilization: float = 0.8
+    max_model_len: int = 4096
 
 
 def image_kwargs(min_pixels: int, max_pixels: int) -> dict[str, Any]:
