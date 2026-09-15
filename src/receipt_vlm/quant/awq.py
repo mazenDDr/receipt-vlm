@@ -9,7 +9,7 @@ llm-compressor is imported inside functions: it lives in the "quant" env only.
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -56,6 +56,15 @@ def check_quantized(model: Any, n_layers: int) -> None:
         raise RuntimeError(
             f"{len(quantized)} quantized modules, expected {n_layers * 7}; outside the LM: {stray[:5]}"
         )
+
+
+def calibration_rows(n: int, input_ids_for: Callable[[int], list[int]]) -> dict[str, list]:
+    """Rows llm-compressor takes as already processed.
+
+    It re-tokenizes any dataset without an `input_ids` column, which turned an index-only dataset into 0 rows.
+    `i` lets our collator rebuild the full batch (pixels included) from the receipt.
+    """
+    return {"i": list(range(n)), "input_ids": [input_ids_for(i) for i in range(n)]}
 
 
 def build_recipe(scheme: str = "W4A16_ASYM") -> list[Any]:

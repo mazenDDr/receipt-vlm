@@ -27,6 +27,9 @@ def main() -> None:
     parser.add_argument("--base", default="Qwen/Qwen2.5-VL-3B-Instruct")
     parser.add_argument("--adapter", required=True)
     parser.add_argument("--out", required=True, type=Path)
+    parser.add_argument(
+        "--merged", type=Path, help="merged bf16 model dir (default: models/<run>-merged-bf16)"
+    )
     parser.add_argument("--n-calib", type=int, default=256)
     parser.add_argument("--max-seq", type=int, default=2048)
     parser.add_argument("--scheme", default="W4A16_ASYM")
@@ -43,7 +46,8 @@ def main() -> None:
     from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
 
     t0 = time.perf_counter()
-    merged = args.out.with_name(args.out.name + "-merged-bf16")
+    # one merged bf16 model per adapter, shared by every quantization of it (and a trade-off row itself)
+    merged = args.merged or Path("models") / f"{Path(args.adapter).parent.name}-merged-bf16"
     if not merged.exists():
         awq.merge_adapter(args.base, args.adapter, merged)
     model = Qwen2_5_VLForConditionalGeneration.from_pretrained(merged, dtype=torch.bfloat16)
@@ -56,6 +60,10 @@ def main() -> None:
     calib = train[: args.n_calib]
     collate = Collator(processor, args.min_pixels, args.max_pixels)
 
+    def input_ids_for(i: int) -> list[int]:
+        batch = collate([calib[i]])
+        return batch["input_ids"][0][batch["attention_mask"][0].bool()].tolist()
+
     def data_collator(rows: list[dict]) -> dict:
         batch = collate([calib[row["i"]] for row in rows])
         batch.pop("labels")
@@ -64,7 +72,7 @@ def main() -> None:
     oneshot(
         model=model,
         processor=processor,
-        dataset=Dataset.from_dict({"i": list(range(len(calib)))}),
+        dataset=Dataset.from_dict(awq.calibration_rows(len(calib), input_ids_for)),
         recipe=awq.build_recipe(args.scheme),
         max_seq_length=args.max_seq,
         num_calibration_samples=len(calib),
