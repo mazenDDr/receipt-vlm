@@ -239,8 +239,11 @@ def train(cfg: TrainConfig, run_dir: Path, model_dir: Path) -> dict:
         def on_epoch_end(self, args, state, control, model=None, **kwargs):  # noqa: ANN001
             # read the training peak before generation resets the counter
             train_peaks_mb.append(torch.cuda.max_memory_allocated() / 2**20)
+            examples = dev[: cfg.eval_limit]
+            if not examples:  # eval_limit 0 skips it (1-epoch runs: the final eval covers all of dev)
+                return
             out = run_dir / f"epoch{state.epoch:.2f}"
-            summary = evaluate(model, processor, dev[: cfg.eval_limit], cfg, out)
+            summary = evaluate(model, processor, examples, cfg, out)
             print(f"epoch {state.epoch:.2f}: dev f1 {summary['metrics']['f1']['value']:.3f}", flush=True)
             _log_dev(summary, state.global_step)
             _sample_table(out, dev, state.global_step)
