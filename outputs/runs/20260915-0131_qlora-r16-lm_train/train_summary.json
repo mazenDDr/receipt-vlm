@@ -1,0 +1,7 @@
+{
+  "train_seconds": 3910.6037,
+  "train_loss": 0.06690663898114077,
+  "train_peak_vram_mb": null,
+  "trainable_params": 29933568,
+  "note": "recovered: train_seconds and train_loss from log_history.json, trainable_params from the saved adapter file; the process stopped during the final eval (machine went down), so peak VRAM was not recorded"
+}
