@@ -1,0 +1,9 @@
+# Stage B: LoRA rank, at stage A's pick. lr 4e-4 had the best dev F1, though its paired difference to 2e-4 was
+# not real (+0.015 [-0.014, +0.050]); 1e-4 was reliably worse. From here on each arm trains one epoch (the epoch-2
+# check added nothing measurable), so the stage-A pick is rerun at one epoch as this stage's reference.
+# alpha = 2 x rank keeps the adapter's scale the same across ranks.
+base: configs/train/qlora-r16-lm.yaml
+arms:
+  - {variant: qlora-r16-lm-lr4e4-e1, learning_rate: 0.0004, epochs: 1, eval_limit: 0}
+  - {variant: qlora-r8-lm-lr4e4-e1, learning_rate: 0.0004, epochs: 1, eval_limit: 0, lora_r: 8, lora_alpha: 16}
+  - {variant: qlora-r32-lm-lr4e4-e1, learning_rate: 0.0004, epochs: 1, eval_limit: 0, lora_r: 32, lora_alpha: 64}
