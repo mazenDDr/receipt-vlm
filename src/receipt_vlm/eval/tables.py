@@ -19,7 +19,10 @@ def run_row(run_dir: Path) -> dict[str, object]:
         "n": summary["n"],
         **{k: summary["metrics"][k] for k in METRIC_KEYS},
         "train_minutes": train["train_seconds"] / 60 if train else None,
-        "train_peak_gb": train["train_peak_vram_mb"] / 1024 if train else None,
+        # null when the job stopped before recording it; shown as "—", never as 0
+        "train_peak_gb": train["train_peak_vram_mb"] / 1024
+        if train and train["train_peak_vram_mb"]
+        else None,
         "trainable_m": train["trainable_params"] / 1e6 if train else None,
     }
 
