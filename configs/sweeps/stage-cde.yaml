@@ -1,0 +1,16 @@
+# Stages C, D and E at stage B's pick (rank 16: r8 was reliably worse, r32 tied), one epoch each, every arm
+# compared (paired) against the stage-B reference qlora-r16-lm-lr4e4-e1. None depends on another's result, so they
+# run as one queue. The two bf16 arms sit near the card's limit, so they use expandable segments (probed first).
+base: configs/train/qlora-r16-lm.yaml
+arms:
+  # C: adapt the vision projector too (254 wrapped modules instead of 252)
+  - {variant: qlora-r16-lmproj-lr4e4-e1, targets: lm+merger, learning_rate: 0.0004, epochs: 1, eval_limit: 0}
+  # D: LoRA on a bf16 base instead of the 4-bit one
+  - {variant: lora-bf16-r16-lm-lr4e4-e1, precision: bf16, learning_rate: 0.0004, epochs: 1, eval_limit: 0,
+     cuda_alloc_conf: "expandable_segments:True"}
+  # E: partial full fine-tuning (projector + last 4 layers). Full-weight updates need a far lower learning rate
+  # than adapters, so two are tried rather than one untuned value.
+  - {variant: partial4-bf16-lr1e5-e1, method: partial, precision: bf16, optim: paged_adamw_8bit,
+     learning_rate: 0.00001, epochs: 1, eval_limit: 0, cuda_alloc_conf: "expandable_segments:True"}
+  - {variant: partial4-bf16-lr5e5-e1, method: partial, precision: bf16, optim: paged_adamw_8bit,
+     learning_rate: 0.00005, epochs: 1, eval_limit: 0, cuda_alloc_conf: "expandable_segments:True"}
