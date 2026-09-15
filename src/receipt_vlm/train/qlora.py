@@ -61,6 +61,21 @@ class TrainConfig(BaseModel):
     wandb_project: str = "receipt-vlm"
     # offline: saved on disk, uploaded later with `wandb sync`
     wandb_mode: Literal["online", "offline"] = "online"
+    # e.g. "expandable_segments:True" for arms near the memory limit (bf16 LoRA, partial fine-tuning)
+    cuda_alloc_conf: str | None = None
+
+
+def apply_cuda_alloc_conf(value: str | None) -> None:
+    """Set PYTORCH_CUDA_ALLOC_CONF. It only works if set before torch starts, so refuse once it's too late."""
+    import sys
+
+    if not value:
+        return
+    if "torch" in sys.modules:
+        raise RuntimeError(
+            "PYTORCH_CUDA_ALLOC_CONF must be set before torch is imported; it would be ignored"
+        )
+    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = value
 
 
 def lora_target_regex(targets: str) -> str:

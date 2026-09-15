@@ -17,7 +17,15 @@ from receipt_vlm.data.build import load_examples
 from receipt_vlm.train import qlora
 from receipt_vlm.train.collate import Collator
 
-OVERRIDES = {"precision": str, "method": str, "targets": str, "lora_r": int, "optim": str, "max_pixels": int}
+OVERRIDES = {
+    "precision": str,
+    "method": str,
+    "targets": str,
+    "lora_r": int,
+    "optim": str,
+    "max_pixels": int,
+    "cuda_alloc_conf": str,
+}
 
 
 def main() -> None:
@@ -30,6 +38,7 @@ def main() -> None:
     cfg = config.load(args.config, qlora.TrainConfig)
     updates = {k: getattr(args, k) for k in OVERRIDES if getattr(args, k) is not None}
     cfg = qlora.TrainConfig.model_validate({**cfg.model_dump(), **updates})
+    qlora.apply_cuda_alloc_conf(cfg.cuda_alloc_conf)  # must happen before torch is imported
 
     import torch
 
