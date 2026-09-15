@@ -21,6 +21,6 @@ eval_limit: 30           # dev receipts scored after each epoch; all 99 at the e
 num_workers: 4
 seed: 0
 report_to: wandb
-wandb_entity: khaledmazen456
+wandb_entity: khaledmazen456-zewail-city-of-science-and-technology  # the user's workspace (sole member)
 wandb_project: receipt-vlm
-wandb_mode: offline      # the personal entity doesn't exist yet (404); runs are kept on disk for `wandb sync`
+wandb_mode: online

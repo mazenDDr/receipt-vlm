@@ -56,7 +56,8 @@ class TrainConfig(BaseModel):
     num_workers: int = 4
     seed: int = 0
     report_to: Literal["wandb", "none"] = "wandb"
-    wandb_entity: str = "khaledmazen456"  # set explicitly: the machine's default entity is a university team
+    # the user's W&B workspace (sole member); the free tier has no personal entity and can't create teams
+    wandb_entity: str = "khaledmazen456-zewail-city-of-science-and-technology"
     wandb_project: str = "receipt-vlm"
     # offline: saved on disk, uploaded later with `wandb sync`
     wandb_mode: Literal["online", "offline"] = "online"
@@ -268,25 +269,20 @@ def train(cfg: TrainConfig, run_dir: Path, model_dir: Path) -> dict:
     train_s = time.perf_counter() - t0
     model.save_pretrained(model_dir / ("adapter" if cfg.method == "lora" else "full"))
     (run_dir / "log_history.json").write_text(json.dumps(trainer.state.log_history, indent=1))
-
-    train_peak_mb = max(train_peaks_mb, default=0.0)
-    final = evaluate(
-        model, processor, dev[: cfg.final_eval_limit], cfg, run_dir
-    )  # top level, like inference runs
-    _log_dev(final, trainer.state.global_step, prefix="final_dev")
-    if wandb.run is not None:
-        wandb.summary.update(
-            {
-                "train_seconds": train_s,
-                "train_loss": result.training_loss,
-                "train_peak_vram_mb": train_peak_mb,
-            }
-        )
-        wandb.finish()
-    return {
+    facts = {
         "train_seconds": train_s,
         "train_loss": result.training_loss,
-        "train_peak_vram_mb": train_peak_mb,
+        "train_peak_vram_mb": max(train_peaks_mb, default=0.0),
         "trainable_params": trainable,
-        **final,
     }
+    # Saved before the final eval: a job that dies there (e.g. the machine sleeps) keeps its training facts,
+    # and the eval can be rerun alone with scripts/run_infer.py --adapter.
+    (run_dir / "train_summary.json").write_text(json.dumps(facts, indent=2))
+
+    # final scores at the run dir's top level, like inference runs
+    final = evaluate(model, processor, dev[: cfg.final_eval_limit], cfg, run_dir)
+    _log_dev(final, trainer.state.global_step, prefix="final_dev")
+    if wandb.run is not None:
+        wandb.summary.update(facts)
+        wandb.finish()
+    return {**facts, **final}

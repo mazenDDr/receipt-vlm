@@ -45,6 +45,8 @@ def test_expected_wrapped_matches_the_measured_counts():
     assert qlora.expected_wrapped(36, "lm+merger") == 254
 
 
-def test_train_config_file_loads_with_the_personal_wandb_entity():
+def test_train_config_logs_online_to_the_users_workspace():
     cfg = config.load("configs/train/qlora-r16-lm.yaml", qlora.TrainConfig)
-    assert cfg.precision == "nf4" and cfg.targets == "lm" and cfg.wandb_entity == "khaledmazen456"
+    assert cfg.precision == "nf4" and cfg.targets == "lm"
+    assert cfg.wandb_entity == "khaledmazen456-zewail-city-of-science-and-technology"
+    assert cfg.wandb_mode == "online"
