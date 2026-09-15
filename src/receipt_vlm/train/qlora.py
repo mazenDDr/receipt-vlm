@@ -61,6 +61,21 @@ class TrainConfig(BaseModel):
     wandb_project: str = "receipt-vlm"
     # offline: saved on disk, uploaded later with `wandb sync`
     wandb_mode: Literal["online", "offline"] = "online"
+    # e.g. "expandable_segments:True" for arms near the memory limit (bf16 LoRA, partial fine-tuning)
+    cuda_alloc_conf: str | None = None
+
+
+def apply_cuda_alloc_conf(value: str | None) -> None:
+    """Set PYTORCH_CUDA_ALLOC_CONF. It only works if set before torch starts, so refuse once it's too late."""
+    import sys
+
+    if not value:
+        return
+    if "torch" in sys.modules:
+        raise RuntimeError(
+            "PYTORCH_CUDA_ALLOC_CONF must be set before torch is imported; it would be ignored"
+        )
+    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = value
 
 
 def lora_target_regex(targets: str) -> str:
@@ -224,8 +239,11 @@ def train(cfg: TrainConfig, run_dir: Path, model_dir: Path) -> dict:
         def on_epoch_end(self, args, state, control, model=None, **kwargs):  # noqa: ANN001
             # read the training peak before generation resets the counter
             train_peaks_mb.append(torch.cuda.max_memory_allocated() / 2**20)
+            examples = dev[: cfg.eval_limit]
+            if not examples:  # eval_limit 0 skips it (1-epoch runs: the final eval covers all of dev)
+                return
             out = run_dir / f"epoch{state.epoch:.2f}"
-            summary = evaluate(model, processor, dev[: cfg.eval_limit], cfg, out)
+            summary = evaluate(model, processor, examples, cfg, out)
             print(f"epoch {state.epoch:.2f}: dev f1 {summary['metrics']['f1']['value']:.3f}", flush=True)
             _log_dev(summary, state.global_step)
             _sample_table(out, dev, state.global_step)

@@ -47,6 +47,7 @@ def main() -> None:
     cfg = config.load(args.config, qlora.TrainConfig)
     updates = {k: getattr(args, k) for k in OVERRIDES if getattr(args, k) is not None}
     cfg = qlora.TrainConfig.model_validate({**cfg.model_dump(), **updates})
+    qlora.apply_cuda_alloc_conf(cfg.cuda_alloc_conf)  # before anything imports torch
 
     model_dir = Path("models") / cfg.variant
     if (model_dir / "adapter").exists() or (model_dir / "full").exists():
