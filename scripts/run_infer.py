@@ -19,6 +19,7 @@ from receipt_vlm.eval import report
 from receipt_vlm.infer import runner
 
 OVERRIDES = (
+    "model",
     "variant",
     "split",
     "limit",
@@ -35,6 +36,7 @@ def main() -> None:
     parser.add_argument("--config", default="configs/infer.yaml")
     parser.add_argument("--resume", default=None, help="existing run dir; its saved config is used")
     parser.add_argument("--tag", default="", help="suffix for the run dir, e.g. px256")
+    parser.add_argument("--model", help="HF id or a local checkpoint dir, e.g. an AWQ-quantized model")
     parser.add_argument("--variant")
     parser.add_argument("--split")
     parser.add_argument("--limit", type=int)
