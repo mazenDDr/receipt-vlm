@@ -69,6 +69,33 @@ Built at f16 it overflows into NaN on particular receipts and the model emits `!
 
 Reading the twenty worst receipts against their photographs, then counting every pattern found that way across the whole dev split, gives a different picture from the aggregate. Separator conventions alone account for about a third of the numeric gap — strict numeric F1 0.866 against 0.910 lenient. The remaining headroom is **structural, not perceptual**, which points at constrained decoding rather than more data. Details: [`docs/failure_taxonomy.md`](docs/failure_taxonomy.md) and [`docs/annotation_guidelines.md`](docs/annotation_guidelines.md).
 
+## Weights
+
+On the Hugging Face Hub. Pick by how you want to run it:
+
+| | Size | For |
+|---|---|---|
+| [**LoRA adapter**](https://huggingface.co/mazenDDr/receipt-vlm-qwen2.5-vl-3b-lora) | 119 MB | applying to the base model yourself, or re-quantizing |
+| [**AWQ W4A16**](https://huggingface.co/mazenDDr/receipt-vlm-qwen2.5-vl-3b-awq) | 3.4 GB | serving on a GPU with vLLM — **the recommended build** |
+| [**GGUF Q4_K_M**](https://huggingface.co/mazenDDr/receipt-vlm-qwen2.5-vl-3b-GGUF) | 4.3 GB | llama.cpp |
+
+```python
+# the adapter, on top of the base model
+from peft import PeftModel
+
+model = PeftModel.from_pretrained(base, "mazenDDr/receipt-vlm-qwen2.5-vl-3b-lora")
+```
+
+```bash
+# the 4-bit build, served
+vllm serve mazenDDr/receipt-vlm-qwen2.5-vl-3b-awq --max-model-len 4096
+```
+
+**If you use the GGUF build, take both files** — `model-Q4_K_M.gguf` *and* `mmproj-f32.gguf`. The projector
+must be f32: at f16 it overflows into NaN on particular receipts and the model then emits `!` until it
+hits the token cap, silently. That is why no f16 projector is published, and why `Q3_K_M` and `Q2_K` are
+not either — without an importance matrix they collapse to field F1 0.100 and 0.000.
+
 ## Try it
 
 **Instantly, in the browser:** [100 recorded extractions](https://mazenddr.github.io/receipt-vlm/demo/) — every held-out receipt with what the base model, the fine-tuned model and both 4-bit builds returned, field by field against the labels, filterable by what went wrong. Nothing runs a model, so it is free and immediate.
