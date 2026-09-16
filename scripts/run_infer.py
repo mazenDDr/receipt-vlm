@@ -2,6 +2,7 @@
 
     python scripts/run_infer.py --config configs/infer.yaml --split dev [--max-pixels 200704] [--limit 5]
     python scripts/run_infer.py --resume outputs/runs/<run_id>      # finish an interrupted run
+    <vllm env>/bin/python scripts/run_infer.py --backend vllm --model models/<awq checkpoint> --split dev
 
 Predictions are appended as they are produced, so a crash loses at most the receipt in progress.
 """
@@ -16,17 +17,23 @@ from pathlib import Path
 from receipt_vlm import config
 from receipt_vlm.data.build import load_examples
 from receipt_vlm.eval import report
-from receipt_vlm.infer import runner
+from receipt_vlm.infer import backends, runner
 
 OVERRIDES = (
+    "model",
+    "backend",
     "variant",
     "split",
+    "offset",
     "limit",
     "max_pixels",
     "max_new_tokens",
+    "max_model_len",
     "repetition_penalty",
     "precision",
     "adapter",
+    "mmproj",
+    "llama_server",
 )
 
 
@@ -35,11 +42,21 @@ def main() -> None:
     parser.add_argument("--config", default="configs/infer.yaml")
     parser.add_argument("--resume", default=None, help="existing run dir; its saved config is used")
     parser.add_argument("--tag", default="", help="suffix for the run dir, e.g. px256")
+    parser.add_argument("--model", help="HF id or a local checkpoint dir, e.g. an AWQ-quantized model")
+    parser.add_argument(
+        "--backend",
+        choices=["hf", "vllm", "llamacpp"],
+        help="engine: transformers, vLLM (AWQ W4A16) or llama.cpp (GGUF)",
+    )
+    parser.add_argument("--mmproj", help="llama.cpp: the vision projector GGUF")
+    parser.add_argument("--llama-server", help="llama.cpp: path to the llama-server binary")
     parser.add_argument("--variant")
     parser.add_argument("--split")
     parser.add_argument("--limit", type=int)
+    parser.add_argument("--offset", type=int, help="start at this receipt, to separate position from content")
     parser.add_argument("--max-pixels", type=int)
     parser.add_argument("--max-new-tokens", type=int)
+    parser.add_argument("--max-model-len", type=int, help="context size (vLLM --max-model-len, llama.cpp -c)")
     parser.add_argument("--repetition-penalty", type=float)
     parser.add_argument("--precision")
     parser.add_argument("--adapter")
@@ -56,16 +73,18 @@ def main() -> None:
         run_dir = Path("outputs/runs") / f"{time.strftime('%Y%m%d-%H%M')}_{cfg.variant}_{cfg.split}{tag}"
         config.save(cfg, run_dir / "config.yaml")
 
-    examples = [e for e in load_examples(cfg.examples_path) if e.split == cfg.split][: cfg.limit]
+    in_split = [e for e in load_examples(cfg.examples_path) if e.split == cfg.split][cfg.offset :]
+    examples = in_split[: cfg.limit]
     pred_path = run_dir / "predictions.jsonl"
     done = report.load_predictions(pred_path)
     todo = [e for e in examples if e.example_id not in done]
-    print(f"{run_dir}: {len(todo)} receipts to run, {len(done)} already done", flush=True)
+    print(f"{run_dir}: {len(todo)} receipts to run, {len(done)} already done ({cfg.backend})", flush=True)
 
     if todo:
-        model, processor = runner.load(cfg)
+        engine = backends.get(cfg.backend)
+        model, processor = engine.load(cfg)
         with pred_path.open("a") as f:
-            for i, pred in enumerate(runner.predict(todo, cfg, model, processor), 1):
+            for i, pred in enumerate(engine.predict(todo, cfg, model, processor), 1):
                 f.write(pred.model_dump_json() + "\n")
                 f.flush()
                 print(

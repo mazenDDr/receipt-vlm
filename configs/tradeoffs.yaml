@@ -1,0 +1,111 @@
+# Rows of the trade-off table: where each row's numbers come from, plus the facts that are not in summary.json.
+#
+# weights_gib: what has to be on disk and loaded to serve this row. For GGUF that is the text model *plus* the
+#   f32 projector, which cannot be quantized.
+# peak_mib:   measured peak GPU memory. transformers records it in-process; llama.cpp rows were sampled with
+#   nvidia-smi during the run (616 MiB idle baseline). null where it was not measured.
+# peak_note:  why a row has no peak. vLLM pre-reserves gpu_memory_utilization of the card at startup, so a
+#   sampled peak would report our configuration rather than the model's requirement.
+#
+# Latency and throughput are taken from the test run where a row has one, otherwise from dev; the rendered
+# table says which.
+
+rows:
+  - label: Base, bf16
+    engine: transformers
+    dev: outputs/runs/20260915-0050_base-bf16_dev
+    test: outputs/runs/20260915-2200_base-bf16_test_final
+    weights_gib: 7.16
+    peak_mib: 7378
+
+  - label: Fine-tuned QLoRA (NF4 base + adapter)
+    engine: transformers
+    dev: outputs/runs/20260915-1155_qlora-r16-lm-lr4e4_train
+    test: outputs/runs/20260915-2231_qlora-r16-lm-lr4e4_test_final
+    weights_gib: null
+    peak_mib: 3631
+
+  - label: Fine-tuned, merged bf16
+    engine: vLLM
+    dev: outputs/runs/20260915-2355_bf16-merged-vllm_dev_final
+    test: outputs/runs/20260916-0000_bf16-merged-vllm_test_final
+    weights_gib: 7.16
+    peak_mib: null
+    peak_note: vLLM pre-reserves 80% of the card
+
+  - label: AWQ W4A16
+    engine: vLLM
+    dev: outputs/runs/20260915-2350_awq-w4a16-vllm_dev_final
+    test: outputs/runs/20260915-2353_awq-w4a16-vllm_test_final
+    weights_gib: 3.31
+    peak_mib: null
+    peak_note: vLLM pre-reserves 80% of the card
+
+  - label: GGUF bf16
+    engine: llama.cpp
+    dev: outputs/runs/20260916-0428_ft-r16-gguf-bf16_dev_final
+    test: outputs/runs/20260916-0512_ft-r16-gguf-bf16_test_final
+    weights_gib: 8.24
+    peak_mib: 9975
+
+  - label: GGUF Q8_0
+    engine: llama.cpp
+    dev: outputs/runs/20260916-0432_ft-r16-gguf-q8_0_dev_final
+    weights_gib: 5.54
+
+  - label: GGUF Q6_K
+    engine: llama.cpp
+    dev: outputs/runs/20260916-0435_ft-r16-gguf-q6_k_dev_final
+    weights_gib: 4.85
+
+  - label: GGUF Q5_K_M
+    engine: llama.cpp
+    dev: outputs/runs/20260916-0437_ft-r16-gguf-q5_k_m_dev_final
+    weights_gib: 4.56
+
+  - label: GGUF Q4_K_M
+    engine: llama.cpp
+    dev: outputs/runs/20260916-0440_ft-r16-gguf-q4_k_m_dev_final
+    test: outputs/runs/20260916-0516_ft-r16-gguf-q4_k_m_test_final
+    weights_gib: 4.28
+    peak_mib: 5881
+
+  - label: GGUF Q3_K_M, no imatrix
+    engine: llama.cpp
+    dev: outputs/runs/20260916-0442_ft-r16-gguf-q3_k_m_dev_final
+    weights_gib: 3.97
+
+  - label: GGUF Q3_K_M + imatrix
+    engine: llama.cpp
+    dev: outputs/runs/20260916-0503_ft-r16-gguf-q3_k_m-imat_dev_imat
+    weights_gib: 3.97
+
+  - label: GGUF Q2_K, no imatrix
+    engine: llama.cpp
+    dev: outputs/runs/20260916-0445_ft-r16-gguf-q2_k_dev_final
+    weights_gib: 3.67
+
+  - label: GGUF Q2_K + imatrix
+    engine: llama.cpp
+    dev: outputs/runs/20260916-0506_ft-r16-gguf-q2_k-imat_dev_imat
+    test: outputs/runs/20260916-0519_ft-r16-gguf-q2_k-imat_test_final
+    weights_gib: 3.67
+    peak_mib: 5260
+
+# Paired comparisons to render underneath, each (a - b) over the same receipts.
+comparisons:
+  - label: AWQ vs merged bf16, both on vLLM, test
+    a: outputs/runs/20260915-2353_awq-w4a16-vllm_test_final
+    b: outputs/runs/20260916-0000_bf16-merged-vllm_test_final
+  - label: GGUF Q4_K_M vs GGUF bf16, test
+    a: outputs/runs/20260916-0516_ft-r16-gguf-q4_k_m_test_final
+    b: outputs/runs/20260916-0512_ft-r16-gguf-bf16_test_final
+  - label: GGUF Q2_K+imatrix vs GGUF bf16, test
+    a: outputs/runs/20260916-0519_ft-r16-gguf-q2_k-imat_test_final
+    b: outputs/runs/20260916-0512_ft-r16-gguf-bf16_test_final
+  - label: GGUF Q2_K+imatrix vs GGUF bf16, dev (did not survive test)
+    a: outputs/runs/20260916-0506_ft-r16-gguf-q2_k-imat_dev_imat
+    b: outputs/runs/20260916-0428_ft-r16-gguf-bf16_dev_final
+  - label: GGUF bf16 vs merged bf16 on vLLM, dev (same weights, different engine)
+    a: outputs/runs/20260916-0428_ft-r16-gguf-bf16_dev_final
+    b: outputs/runs/20260915-2355_bf16-merged-vllm_dev_final

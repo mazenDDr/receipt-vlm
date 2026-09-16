@@ -37,7 +37,9 @@ def run_stats(preds: list[Prediction]) -> dict[str, object]:
         "prompt_tokens": percentiles([p.prompt_tokens for p in preds]),
         "latency_s": percentiles([p.latency_s for p in preds]),
         "output_tokens_per_s": sum(p.output_tokens for p in preds) / latency if latency else 0.0,
-        "peak_vram_mb": max((p.peak_vram_mb or 0.0) for p in preds),
+        # None when nothing recorded it: vLLM and llama.cpp hold their memory outside this process,
+        # and a 0 here would read as a measured zero rather than "not measured".
+        "peak_vram_mb": max((p.peak_vram_mb for p in preds if p.peak_vram_mb is not None), default=None),
     }
 
 
@@ -60,6 +62,11 @@ def write(run_dir: Path, examples: list[ReceiptExample], variant: str, split: st
     return summary
 
 
+def vram_mb(value: float | None) -> str:
+    """Unmeasured peak VRAM prints as a dash, never as 0, which would read as a measured zero."""
+    return "—" if value is None else f"{value:.0f}"
+
+
 def render(summary: dict) -> str:
     lines = [
         f"# {summary['variant']} on {summary['split']} ({summary['n']} receipts)",
@@ -80,7 +87,7 @@ def render(summary: dict) -> str:
         f"| Prompt tokens p50 | {run['prompt_tokens']['p50']:.0f} |",
         f"| Latency p50 / p95 (s) | {lat['p50']:.2f} / {lat['p95']:.2f} |",
         f"| Output tokens per second of wall time | {run['output_tokens_per_s']:.1f} |",
-        f"| Peak VRAM (MB) | {run['peak_vram_mb']:.0f} |",
+        f"| Peak VRAM (MB) | {vram_mb(run['peak_vram_mb'])} |",
     ]
     return "\n".join(lines) + "\n"
 

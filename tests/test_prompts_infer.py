@@ -81,3 +81,30 @@ def test_run_stats_and_render():
     }
     text = render(summary)
     assert "| Field F1 | 0.500 | [0.400, 0.600] |" in text and "25.0%" in text
+    assert stats["peak_vram_mb"] == 8000.0 and "| Peak VRAM (MB) | 8000 |" in text
+
+
+def test_unmeasured_peak_vram_is_a_dash_not_a_zero():
+    """vLLM and llama.cpp hold memory in another process, so their runs record no peak.
+
+    The first version summed `p.peak_vram_mb or 0.0`, and every out-of-process run reported a peak of
+    "0 MB" in its committed report — a measured zero, which is not what happened.
+    """
+    preds = [
+        Prediction(
+            example_id=f"cord-validation-{i:04d}",
+            variant="ft-r16-gguf-q8_0",
+            raw_output="{}",
+            parsed={},
+            prompt_tokens=1234,
+            output_tokens=97,
+            latency_s=1.3,
+            peak_vram_mb=None,
+            truncated=False,
+        )
+        for i in range(3)
+    ]
+    stats = run_stats(preds)
+    assert stats["peak_vram_mb"] is None
+    summary = {"variant": "v", "split": "dev", "n": 3, "metrics": {}, "run": stats}
+    assert "| Peak VRAM (MB) | — |" in render(summary)
