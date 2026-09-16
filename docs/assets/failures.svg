@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 270" width="880" height="270" role="img" aria-label="What goes wrong on the 100 test receipts: 41 exactly correct, 16 with a digit difference, 15 differing only in separators or whitespace, 9 with a nesting error, 2 with the item code folded into the name, and zero with invalid JSON. The worst receipt has every value correct and every key wrong.">
+  <title>The model reads receipts well and misfiles what it reads</title>
+  <style>
+    .bg{fill:#ECEEF1}
+    .card{fill:#FFFFFF;stroke:#DCE0E6}
+    .lab{font:600 9.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#6B7480;letter-spacing:.1em}
+    .t{font:600 12px -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;fill:#171B21}
+    .s{font:400 9.8px -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;fill:#6B7480}
+    .mono{font:400 10.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#171B21}
+    .val{font:600 11px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#171B21}
+    .seg{transform-box:fill-box;transform-origin:left center}
+    .ok{fill:#2E7D4F}.dig{fill:#C0392B}.sep{fill:#A9701C}.nest{fill:#2D5BD6}.code{fill:#7C6BB5}
+    .okt{fill:#2E7D4F}.digt{fill:#C0392B}.sept{fill:#A9701C}.nestt{fill:#2D5BD6}
+    .zero{fill:none;stroke:#2E7D4F;stroke-width:1.4;stroke-dasharray:4 3}
+    /* The reveal finishes by 57% so the completed figure holds for most of every loop. */
+    @keyframes g1{0%,3%{transform:scaleX(0)}12%,100%{transform:scaleX(1)}}
+    @keyframes g2{0%,12%{transform:scaleX(0)}19%,100%{transform:scaleX(1)}}
+    @keyframes g3{0%,19%{transform:scaleX(0)}26%,100%{transform:scaleX(1)}}
+    @keyframes g4{0%,26%{transform:scaleX(0)}33%,100%{transform:scaleX(1)}}
+    @keyframes g5{0%,33%{transform:scaleX(0)}39%,100%{transform:scaleX(1)}}
+    @keyframes late{0%,41%{opacity:0}48%,100%{opacity:1}}
+    @keyframes late2{0%,50%{opacity:0}57%,100%{opacity:1}}
+    .s1{animation:g1 11s infinite}.s2{animation:g2 11s infinite}.s3{animation:g3 11s infinite}
+    .s4{animation:g4 11s infinite}.s5{animation:g5 11s infinite}
+    .note{animation:late 11s infinite}.note2{animation:late2 11s infinite}
+    @media (prefers-reduced-motion:reduce){*{animation:none!important;opacity:1!important;transform:scaleX(1)!important}}
+  </style>
+  <rect class="bg" width="880" height="270" rx="14"/>
+
+  <text class="lab" x="28" y="26">100 HELD-OUT RECEIPTS · ONE BLOCK EACH</text>
+
+  <!-- 100 receipts across 784px: 7.84px per receipt -->
+  <rect class="seg ok s1"   x="28"    y="44" width="321.4" height="34" rx="3"/>
+  <rect class="seg dig s2"  x="349.4" y="44" width="125.4" height="34"/>
+  <rect class="seg sep s3"  x="474.8" y="44" width="117.6" height="34"/>
+  <rect class="seg nest s4" x="592.4" y="44" width="70.6"  height="34"/>
+  <rect class="seg code s5" x="663"   y="44" width="15.7"  height="34"/>
+  <rect class="card"        x="678.7" y="44" width="133.3" height="34" rx="3"/>
+  <text class="s" x="690" y="66">17 other / mixed</text>
+
+  <text class="val okt"   x="28"    y="98">41</text>
+  <text class="s"         x="28"    y="112">exactly correct</text>
+  <text class="val digt"  x="349.4" y="98">16</text>
+  <text class="s"         x="349.4" y="112">a digit differs</text>
+  <text class="val sept"  x="474.8" y="98">15</text>
+  <text class="s"         x="474.8" y="112">separator or space only</text>
+  <text class="val nestt" x="592.4" y="98">9</text>
+  <text class="s"         x="592.4" y="112">nesting</text>
+
+  <!-- zero invalid -->
+  <g class="note">
+    <rect class="card zero" x="28" y="134" width="248" height="52" rx="7"/>
+    <text class="val ok" x="44" y="158">0 invalid JSON</text>
+    <text class="s" x="44" y="176">every receipt parsed, none truncated</text>
+  </g>
+
+  <!-- the point -->
+  <g class="note2">
+    <rect class="card" x="292" y="134" width="560" height="52" rx="7"/>
+    <text class="t" x="308" y="156">The worst receipt has every value correct and every key wrong.</text>
+    <text class="s" x="308" y="176">itemsubtotal written as discountprice, the item code folded into the name, a sub_total invented from the quantity line.</text>
+  </g>
+
+  <text class="s" x="28" y="212">Separator conventions alone account for about a third of the numeric gap: strict numeric F1 0.866 against 0.910 when separators are ignored.</text>
+  <text class="t" x="28" y="236">So the remaining headroom is structural, not perceptual — which points at constrained decoding, not more training data.</text>
+  <text class="s" x="28" y="258">Categories overlap: one receipt can show both a digit difference and a nesting error.</text>
+</svg>

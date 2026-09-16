@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>receipt-vlm Field Guide</title>
+<meta name="description" content="Every part of receipt-vlm explained: how CORD receipts are split, how the model is fine-tuned with QLoRA, how it is quantized to 4 bits, what that costs, and where the remaining errors actually come from.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bed:#ECEEF1; --sheet:#FFFFFF; --sheet-2:#F4F6F9; --line:#DCE0E6; --line-soft:#E7EAEF;
+  --ink:#171B21; --ink-2:#4A535F; --ink-3:#6B7480;
+  --acc:#2D5BD6; --acc-soft:#E7EDFB;
+  --ok:#2E7D4F; --ok-soft:#E3F1E8;
+  --warn:#A9701C; --warn-soft:#FAF0DD;
+  --bad:#C0392B; --bad-soft:#FBE9E6;
+  --shadow:0 1px 2px rgba(23,27,33,.05),0 10px 26px rgba(23,27,33,.07);
+  --sans:"Public Sans","Helvetica Neue",Arial,system-ui,sans-serif;
+  --display:"Archivo","Helvetica Neue",Arial,system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bed:#101317; --sheet:#181C22; --sheet-2:#1E232B; --line:#2B313A; --line-soft:#232830;
+    --ink:#E9ECF1; --ink-2:#AEB6C1; --ink-3:#818A96;
+    --acc:#7FA3F0; --acc-soft:#1B2740; --ok:#6FBE8C; --ok-soft:#162C20;
+    --warn:#D9A758; --warn-soft:#2C2416; --bad:#E58575; --bad-soft:#331F1C;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 26px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bed:#101317; --sheet:#181C22; --sheet-2:#1E232B; --line:#2B313A; --line-soft:#232830;
+  --ink:#E9ECF1; --ink-2:#AEB6C1; --ink-3:#818A96;
+  --acc:#7FA3F0; --acc-soft:#1B2740; --ok:#6FBE8C; --ok-soft:#162C20;
+  --warn:#D9A758; --warn-soft:#2C2416; --bad:#E58575; --bad-soft:#331F1C;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 26px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:70px}
+body{margin:0;background:var(--bed);color:var(--ink);font:400 16px/1.68 var(--sans);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:20px}
+@media (max-width:520px){.wrap{padding-inline:16px}}
+a{color:var(--acc);text-underline-offset:3px}
+h1,h2,h3{font-family:var(--display);letter-spacing:-.015em;text-wrap:balance;margin:0}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:4px}
+[hidden]{display:none!important}
+code{font:500 .85em var(--mono);background:var(--sheet-2);border:1px solid var(--line-soft);border-radius:4px;padding:1px 5px;overflow-wrap:anywhere}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+
+.nav{position:sticky;top:0;z-index:20;background:var(--bed);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;gap:16px;height:56px}
+.brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--ink);font:600 17px/1 var(--display)}
+.brand b{background:var(--ink);color:var(--bed);width:24px;height:24px;border-radius:5px;display:grid;place-items:center;font:600 12px/1 var(--mono)}
+.nav ul{display:flex;gap:2px;list-style:none;margin:0 0 0 auto;padding:0}
+.nav a.nl{font:500 14px/1 var(--sans);color:var(--ink-2);text-decoration:none;padding:8px 10px;border-radius:7px}
+.nav a.nl:hover{background:var(--sheet);color:var(--ink)}
+@media (max-width:760px){.nav li.opt{display:none}}
+.icon-btn{border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:8px;width:34px;height:34px;display:grid;place-items:center;cursor:pointer;flex:none}
+
+header.head{padding-block:52px 22px}
+header.head h1{font-size:clamp(34px,5.4vw,58px);line-height:1.02;max-width:17ch}
+.lede{margin:.9rem 0 0;max-width:66ch;color:var(--ink-2);font-size:17.5px}
+.label{font:500 11px/1 var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+.quicks{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+.quick{background:var(--sheet);border:1px solid var(--line);border-radius:9px;padding:10px 14px;min-width:150px}
+.quick b{display:block;font:600 20px/1.2 var(--mono);font-variant-numeric:tabular-nums}
+.quick span{font:500 10.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+
+section.stage{border-top:1px solid var(--line);padding-block:34px}
+section.stage h2{font-size:26px;margin-bottom:.4rem}
+section.stage .sub{color:var(--ink-3);font:500 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.8rem}
+section.stage p{margin:.5rem 0 0;max-width:66ch;color:var(--ink-2)}
+figure{margin:18px 0 0}
+figure img{width:100%;display:block;border-radius:10px;border:1px solid var(--line)}
+figcaption{margin-top:8px;color:var(--ink-3);font-size:13.5px;max-width:66ch}
+.files{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.file{font:500 11.5px var(--mono);background:var(--sheet);border:1px solid var(--line);border-radius:7px;padding:5px 9px;color:var(--ink-2)}
+.why{border-left:3px solid var(--acc);background:var(--sheet);padding:13px 16px;border-radius:0 9px 9px 0;margin-top:16px;max-width:72ch}
+.why b{font-family:var(--display)}
+table.grid{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:16px}
+table.grid th{text-align:left;font:500 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);padding:7px 9px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.grid td{padding:7px 9px;border-bottom:1px solid var(--line-soft);font-variant-numeric:tabular-nums}
+table.grid td.k{font:500 12px var(--mono);color:var(--ink-2)}
+table.grid tr.hi td{background:var(--acc-soft)}
+.scroll{overflow-x:auto}
+footer{border-top:1px solid var(--line);padding-block:26px 48px;color:var(--ink-3);font-size:13.5px}
+</style>
+</head>
+<body>
+
+<nav class="nav"><div class="wrap">
+  <a class="brand" href="./"><b>R</b> receipt-vlm</a>
+  <ul>
+    <li class="opt"><a class="nl" href="#data">Data</a></li>
+    <li class="opt"><a class="nl" href="#train">Fine-tune</a></li>
+    <li class="opt"><a class="nl" href="#quantize">Quantize</a></li>
+    <li class="opt"><a class="nl" href="#errors">Errors</a></li>
+    <li><a class="nl" href="tour/">The tour</a></li>
+    <li><a class="nl" href="demo/">Recorded extractions</a></li>
+    <li><a class="nl" href="https://github.com/mazenDDr/receipt-vlm">GitHub</a></li>
+  </ul>
+  <button class="icon-btn" id="theme" type="button" aria-label="Switch theme">◐</button>
+</div></nav>
+
+<div class="wrap">
+  <header class="head">
+    <p class="label">Field guide</p>
+    <h1>Teaching a 3B model to read receipts, and finding out what that costs</h1>
+    <p class="lede">Every part of the system, with the measurement that decided it. Fine-tuning moved
+      field F1 from 0.440 to 0.836 on receipts the model had never seen. Quantizing to 4 bits cost
+      nothing measurable. Two of the most convincing results along the way turned out to be bugs in
+      the pipeline, and both are here too.</p>
+    <div class="quicks" id="quicks"></div>
+  </header>
+</div>
+
+<div class="wrap">
+
+<section class="stage" id="data">
+  <p class="sub">01 · Data</p>
+  <h2>1,000 receipts, split so nothing leaks</h2>
+  <p>CORD v2 is 1,000 photographed Indonesian till receipts, each labelled with its fields as JSON.
+    The published split is 800 / 100 / 100. Before using it, every image was hashed perceptually and
+    compared across splits: <b>28 near-duplicate images appeared in more than one split</b> and were
+    dropped, leaving 773 / 99 / 100. Choices are made on dev; the test split was scored once.</p>
+  <figure>
+    <img src="assets/pipeline.svg" alt="The pipeline: data, train, merge, quantize, serve. Each stage writes a file the next one reads.">
+    <figcaption>Each stage writes files the next one reads, so any stage can be re-run alone.</figcaption>
+  </figure>
+  <div class="files">
+    <span class="file">src/receipt_vlm/data/build.py</span>
+    <span class="file">data/dedup.py</span>
+    <span class="file">scripts/build_data.py</span>
+    <span class="file">configs/data.yaml</span>
+  </div>
+  <div class="why"><b>Why a perceptual hash, not an exact one.</b> The same receipt appears in CORD
+    more than once at different crops and compressions, which an exact hash misses entirely. A
+    256-bit difference hash caught 28 of them. Without that check the test scores would have been
+    measured partly on receipts the model trained on.</div>
+</section>
+
+<section class="stage" id="train">
+  <p class="sub">02 · Fine-tuning</p>
+  <h2>QLoRA on one consumer GPU</h2>
+  <p>The base model is loaded in 4-bit NF4 with the vision tower kept in bf16, and LoRA adapters are
+    trained on the language model only. Loss is computed on the answer tokens alone. The whole run
+    fits in 16 GB of VRAM.</p>
+  <figure>
+    <img src="assets/finetune.svg" alt="Field F1 on the test split: base model 0.440, fine-tuned 0.836, a paired difference of +0.396 with a 95% interval from +0.345 to +0.442.">
+    <figcaption>Every comparison in this project is paired over the same receipts, with a 95%
+      bootstrap interval. A difference counts as real only when its interval excludes zero.</figcaption>
+  </figure>
+  <div class="files">
+    <span class="file">train/qlora.py</span>
+    <span class="file">train/collate.py</span>
+    <span class="file">train/sweep.py</span>
+    <span class="file">prompts.py</span>
+  </div>
+  <div class="why"><b>Why the language model only.</b> Adapting the vision projector as well was one
+    arm of the ablation and did not help: 0.867 against 0.900 on dev. Rank 8 and rank 32 both scored
+    below rank 16, and partial full fine-tuning of the last four layers scored 0.817. The full table
+    is in <a href="https://github.com/mazenDDr/receipt-vlm/blob/main/docs/ablations.md">docs/ablations.md</a>.</div>
+  <div class="scroll" id="ablation-grid"></div>
+</section>
+
+<section class="stage" id="quantize">
+  <p class="sub">03 · Quantization</p>
+  <h2>Four bits costs nothing here. Below four, it depends on calibration.</h2>
+  <p>The adapter is merged into bf16, then quantized two ways: AWQ W4A16 for vLLM, and seven GGUF bit
+    widths for llama.cpp. Everything from Q8_0 down to Q4_K_M sits within noise of the bf16 reference,
+    and each is faster.</p>
+  <figure>
+    <img src="assets/quantization.svg" alt="Field F1 by GGUF bit width. bf16 through Q4_K_M are all near 0.90. Q3_K_M falls to 0.100 and Q2_K to 0.000 without an importance matrix; with one they recover to 0.858 and 0.876.">
+    <figcaption>The drop at Q3 and Q2 looked like a bit-width cliff. It was an uncalibrated
+      quantization: our own build script never compiled <code>llama-imatrix</code>.</figcaption>
+  </figure>
+  <div class="scroll" id="quant-grid"></div>
+  <div class="why"><b>Why the vision projector has to be f32.</b> Built at f16 it overflows into NaN
+    on particular receipts and the model emits <code>!</code> until it hits the token cap — silently,
+    with the server reporting normal throughput. It cannot be quantized either, so it is a fixed
+    2.49 GiB on every GGUF row, which is why no GGUF build undercuts the AWQ checkpoint on disk.</div>
+  <figure>
+    <img src="assets/projector.svg" alt="The f16 projector floods exclamation marks on 6 of 10 receipts with field F1 0.540; at f32 the same weights score 0.899 with nothing truncated.">
+    <figcaption>Same weights, same prompt, same image cap. Only the projector's precision changed.</figcaption>
+  </figure>
+</section>
+
+<section class="stage" id="errors">
+  <p class="sub">04 · What is still wrong</p>
+  <h2>The model reads receipts well and misfiles what it reads</h2>
+  <p>All 100 held-out receipts produced valid JSON — there are no format failures. Reading the worst
+    twenty by hand against their photographs, and then counting every pattern found that way across
+    the whole dev split, gives a different picture from the aggregate score.</p>
+  <figure>
+    <img src="assets/failures.svg" alt="Of 100 test receipts: 41 exactly correct, 16 with a digit difference, 15 differing only in separators, 9 with a nesting error, and 0 with invalid JSON.">
+    <figcaption>Categories overlap: one receipt can show both a digit difference and a nesting error.</figcaption>
+  </figure>
+  <div class="why"><b>Why this points away from more data.</b> The worst receipt in the split has
+    every value correct and every key wrong. Separator conventions alone account for about a third of
+    the numeric gap. Neither is fixed by more training examples; both are decisions about CORD's
+    schema, which is what constrained or schema-aware decoding addresses. The conventions themselves
+    are written up in
+    <a href="https://github.com/mazenDDr/receipt-vlm/blob/main/docs/annotation_guidelines.md">docs/annotation_guidelines.md</a>.</div>
+</section>
+
+<section class="stage" id="serve">
+  <p class="sub">05 · Serving</p>
+  <h2>One image in, its fields out, with what the answer cost</h2>
+  <p>The API calls the same backend registry the evaluation does, so one service can front
+    transformers, vLLM or llama.cpp by changing two lines of config. Every response carries the
+    latency, token counts and throughput that the deployment decision was made on.</p>
+  <div class="files">
+    <span class="file">serve/api.py</span>
+    <span class="file">serve/gradio_app.py</span>
+    <span class="file">infer/backends.py</span>
+    <span class="file">Dockerfile</span>
+  </div>
+  <div class="why"><b>There is no hosted demo.</b> Running a 3B vision model costs money, and a free
+    CPU tier would serve it at a few tokens per second — a poor advertisement for something that runs
+    at 103 tokens per second on a GPU. The <a href="demo/">recorded extractions</a> show every
+    held-out receipt instead, and the README documents running it locally.</div>
+</section>
+
+<section class="stage" id="rebuild">
+  <p class="sub">Appendix</p>
+  <h2>Rebuilding all of this</h2>
+  <p>Every number on these pages is read from the committed runs under <code>outputs/runs/</code>.
+    Nothing is typed in by hand, so re-scoring a variant and rebuilding updates the pages.</p>
+  <div class="files">
+    <span class="file">python scripts/build_data.py</span>
+    <span class="file">python scripts/train.py</span>
+    <span class="file">python scripts/quantize_awq.py</span>
+    <span class="file">bash scripts/make_gguf.sh</span>
+    <span class="file">python scripts/tradeoffs_doc.py</span>
+    <span class="file">python scripts/build_site.py</span>
+  </div>
+</section>
+
+</div>
+
+<footer><div class="wrap">
+  Receipts from <a href="https://huggingface.co/datasets/naver-clova-ix/cord-v2">CORD v2</a>
+  (Park et al., 2019), CC BY 4.0. Base model Qwen2.5-VL-3B-Instruct. MIT licensed.
+  <a href="https://github.com/mazenDDr/receipt-vlm">Source</a>.
+</div></footer>
+
+<script>
+const GRID = {"quick":[{"value":"0.440","label":"base model, test"},{"value":"0.836","label":"fine-tuned, test","colour":"ok"},{"value":"39/100","label":"exactly correct"},{"value":"103","label":"tok/s at 4-bit","colour":"acc"}],"ablations":[{"label":"Base model, zero-shot","f1":0.493744787322769,"numeric":0.4910220994475138,"text":0.5049928673323824,"chosen":false},{"label":"r16, LM only, lr 1e-4","f1":0.8693086003372681,"numeric":0.8927410617551462,"text":0.7870722433460076,"chosen":false},{"label":"r16, LM only, lr 4e-4","f1":0.8999577880962432,"numeric":0.9224091155724362,"text":0.8212927756653993,"chosen":true},{"label":"r8, LM only, lr 4e-4","f1":0.84286319356205,"numeric":0.8689505165851006,"text":0.7509578544061303,"chosen":false},{"label":"r32, LM only, lr 4e-4","f1":0.869382612347753,"numeric":0.8969239071775499,"text":0.7727272727272727,"chosen":false},{"label":"r16, LM + vision projector","f1":0.8673383711167086,"numeric":0.8921251348435815,"text":0.7803030303030303,"chosen":false},{"label":"r16, bf16 LoRA (no NF4 base)","f1":0.8686952897040433,"numeric":0.8924558587479936,"text":0.7849056603773585,"chosen":false},{"label":"Partial fine-tune, last 4 layers","f1":0.8172954641797372,"numeric":0.8454842219804135,"text":0.7178502879078695,"chosen":false}],"quant":[{"label":"GGUF bf16 (reference)","split":"dev","f1":0.9012189995796553,"p50":2.6087860010011354,"tps":40.49518416116847,"chosen":false},{"label":"GGUF Q8_0","split":"dev","f1":0.9006734006734006,"p50":1.8160552790068323,"tps":58.53525270817575,"chosen":false},{"label":"GGUF Q6_K","split":"dev","f1":0.8985263157894737,"p50":1.7131618400017032,"tps":62.926865869697714,"chosen":false},{"label":"GGUF Q5_K_M","split":"dev","f1":0.9048821548821548,"p50":1.6061158450029325,"tps":67.79936000624028,"chosen":false},{"label":"GGUF Q4_K_M","split":"dev","f1":0.8969902501059771,"p50":1.4839775989967166,"tps":71.78658089144677,"chosen":false},{"label":"GGUF Q3_K_M, no imatrix","split":"dev","f1":0.10030864197530864,"p50":1.5025457949959673,"tps":64.84210012804006,"chosen":false},{"label":"GGUF Q2_K, no imatrix","split":"dev","f1":0.0,"p50":0.8433570360066369,"tps":3.6157054863170597,"chosen":false},{"label":"GGUF Q3_K_M + imatrix","split":"dev","f1":0.8577586206896551,"p50":1.6056641739996849,"tps":66.33409790973066,"chosen":false},{"label":"GGUF Q2_K + imatrix","split":"dev","f1":0.8758333333333334,"p50":1.5010607570002321,"tps":73.97179637961192,"chosen":false},{"label":"Fine-tuned bf16 on vLLM","split":"test","f1":0.8524212144504227,"p50":2.0708210744960525,"tps":51.13453906334661,"chosen":false},{"label":"AWQ W4A16 on vLLM","split":"test","f1":0.8471953578336557,"p50":1.0519456385009107,"tps":103.05604492418081,"chosen":true},{"label":"GGUF Q4_K_M on llama.cpp","split":"test","f1":0.8319876970396002,"p50":1.5051742295036092,"tps":75.44547028730123,"chosen":false}]};
+(function () {
+  const $ = (id) => document.getElementById(id);
+  try {
+    const saved = localStorage.getItem("rv-theme");
+    if (saved) document.documentElement.dataset.theme = saved;
+  } catch (e) { /* private window */ }
+  $("theme").addEventListener("click", () => {
+    const now = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = now;
+    try { localStorage.setItem("rv-theme", now); } catch (e) { /* ignore */ }
+  });
+
+  const esc = (s) => String(s).replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]));
+  const n = (v, d) => (v === null || v === undefined ? "—" : v.toFixed(d));
+
+  $("quicks").innerHTML = GRID.quick.map((q) =>
+    `<div class="quick"><b${q.colour ? ` style="color:var(--${q.colour})"` : ""}>${q.value}</b>` +
+    `<span>${q.label}</span></div>`).join("");
+
+  function table(rows, columns, highlight) {
+    return `<table class="grid"><thead><tr>` +
+      columns.map((c) => `<th>${c.head}</th>`).join("") + "</tr></thead><tbody>" +
+      rows.map((r) => `<tr${highlight && highlight(r) ? ' class="hi"' : ""}>` +
+        columns.map((c, i) => `<td${i === 0 ? ' class="k"' : ""}>${c.cell(r)}</td>`).join("") +
+        "</tr>").join("") + "</tbody></table>";
+  }
+
+  $("ablation-grid").innerHTML = table(GRID.ablations, [
+    { head: "Arm", cell: (r) => esc(r.label) },
+    { head: "Dev field F1", cell: (r) => n(r.f1, 3) },
+    { head: "Numeric", cell: (r) => n(r.numeric, 3) },
+    { head: "Text", cell: (r) => n(r.text, 3) },
+  ], (r) => r.chosen);
+
+  $("quant-grid").innerHTML = table(GRID.quant, [
+    { head: "Build", cell: (r) => esc(r.label) },
+    { head: "Split", cell: (r) => r.split },
+    { head: "Field F1", cell: (r) => n(r.f1, 3) },
+    { head: "Latency p50", cell: (r) => n(r.p50, 2) + " s" },
+    { head: "Output tok/s", cell: (r) => n(r.tps, 1) },
+  ], (r) => r.chosen);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recorded extractions · receipt-vlm</title>
+<meta name="description" content="Every one of the 100 held-out receipts, with what the base model, the fine-tuned model and the 4-bit build each returned, field by field against the labels.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+/* Thermal paper on a scanner bed: cool greys, dot-matrix mono for every value, scanner blue for the
+   machine. Semantic colour is kept separate from the accent. */
+:root{
+  --bed:#ECEEF1; --sheet:#FFFFFF; --sheet-2:#F4F6F9; --line:#DCE0E6; --line-soft:#E7EAEF;
+  --ink:#171B21; --ink-2:#4A535F; --ink-3:#6B7480;
+  --acc:#2D5BD6; --acc-soft:#E7EDFB;
+  --ok:#2E7D4F; --ok-soft:#E3F1E8;
+  --warn:#A9701C; --warn-soft:#FAF0DD;
+  --bad:#C0392B; --bad-soft:#FBE9E6;
+  --shadow:0 1px 2px rgba(23,27,33,.05),0 10px 26px rgba(23,27,33,.07);
+  --sans:"Public Sans","Helvetica Neue",Arial,system-ui,sans-serif;
+  --display:"Archivo","Helvetica Neue",Arial,system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bed:#101317; --sheet:#181C22; --sheet-2:#1E232B; --line:#2B313A; --line-soft:#232830;
+    --ink:#E9ECF1; --ink-2:#AEB6C1; --ink-3:#818A96;
+    --acc:#7FA3F0; --acc-soft:#1B2740;
+    --ok:#6FBE8C; --ok-soft:#162C20;
+    --warn:#D9A758; --warn-soft:#2C2416;
+    --bad:#E58575; --bad-soft:#331F1C;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 26px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bed:#101317; --sheet:#181C22; --sheet-2:#1E232B; --line:#2B313A; --line-soft:#232830;
+  --ink:#E9ECF1; --ink-2:#AEB6C1; --ink-3:#818A96;
+  --acc:#7FA3F0; --acc-soft:#1B2740;
+  --ok:#6FBE8C; --ok-soft:#162C20;
+  --warn:#D9A758; --warn-soft:#2C2416;
+  --bad:#E58575; --bad-soft:#331F1C;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 26px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bed);color:var(--ink);font:400 15px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1280px;margin:0 auto;padding-inline:20px}
+@media (max-width:520px){.wrap{padding-inline:16px}}
+a{color:var(--acc);text-underline-offset:3px}
+h1,h2,h3{font-family:var(--display);letter-spacing:-.015em;text-wrap:balance;margin:0}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:4px}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.nav{position:sticky;top:0;z-index:20;background:var(--bed);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;gap:16px;height:56px}
+.brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--ink);font:600 17px/1 var(--display)}
+.brand b{background:var(--ink);color:var(--bed);width:24px;height:24px;border-radius:5px;display:grid;place-items:center;font:600 12px/1 var(--mono)}
+.nav ul{display:flex;gap:2px;list-style:none;margin:0 0 0 auto;padding:0}
+.nav a.nl{font:500 14px/1 var(--sans);color:var(--ink-2);text-decoration:none;padding:8px 10px;border-radius:7px}
+.nav a.nl:hover{background:var(--sheet);color:var(--ink)}
+.icon-btn{border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:8px;width:34px;height:34px;display:grid;place-items:center;cursor:pointer;flex:none}
+
+header.head{padding-block:32px 18px}
+header.head h1{font-size:clamp(28px,4vw,42px);line-height:1.05}
+.lede{margin:.6rem 0 0;max-width:66ch;color:var(--ink-2)}
+.note{margin:.7rem 0 0;max-width:66ch;color:var(--ink-3);font-size:13.5px}
+
+.tallies{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.tally{background:var(--sheet);border:1px solid var(--line);border-radius:9px;padding:9px 14px;min-width:132px}
+.tally b{display:block;font:600 19px/1.2 var(--mono);font-variant-numeric:tabular-nums}
+.tally span{font:500 10.5px/1 var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+.tally.ok b{color:var(--ok)} .tally.warn b{color:var(--warn)} .tally.bad b{color:var(--bad)}
+
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:20px 0 10px}
+.chip{font:500 13px/1 var(--sans);padding:7px 13px;border:1px solid var(--line);background:var(--sheet);color:var(--ink-2);border-radius:999px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bed)}
+.chip .n{font:500 11.5px var(--mono);opacity:.72;margin-left:5px}
+.search{margin-left:auto;display:flex;align-items:center;gap:8px}
+.search input{font:400 14px var(--sans);padding:7px 11px;border:1px solid var(--line);border-radius:8px;background:var(--sheet);color:var(--ink);width:210px}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:12px;padding-block:8px 36px}
+.card{background:var(--sheet);border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;text-align:left;padding:0;color:inherit;font:inherit;display:flex;flex-direction:column}
+.card:hover{border-color:var(--acc)}
+.card img{width:100%;aspect-ratio:3/4;object-fit:cover;object-position:top;display:block;background:var(--sheet-2)}
+.card .meta{padding:9px 11px;display:flex;align-items:baseline;gap:8px;border-top:1px solid var(--line-soft)}
+.card .rid{font:500 12px var(--mono)}
+.card .f1{margin-left:auto;font:600 12px var(--mono);font-variant-numeric:tabular-nums}
+.stripe{height:3px;width:100%}
+
+dialog{border:none;border-radius:12px;padding:0;background:var(--sheet);color:var(--ink);max-width:1120px;width:calc(100% - 32px);box-shadow:var(--shadow)}
+dialog::backdrop{background:rgba(16,19,23,.55)}
+.sheet{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:0}
+@media (max-width:820px){.sheet{grid-template-columns:1fr}}
+.shot{padding:16px;border-right:1px solid var(--line)}
+@media (max-width:820px){.shot{border-right:0;border-bottom:1px solid var(--line)}}
+.shot img{width:100%;border:1px solid var(--line);border-radius:6px;display:block}
+.shot .cap{margin-top:9px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.body{padding:16px 18px 20px;min-width:0}
+.dlg-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.dlg-head h2{font-size:19px}
+.close{margin-left:auto;border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:8px;padding:6px 11px;cursor:pointer;font:500 13px var(--sans)}
+
+.variants{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.vtab{font:500 12.5px var(--sans);padding:6px 11px;border:1px solid var(--line);background:transparent;color:var(--ink-2);border-radius:7px;cursor:pointer}
+.vtab[aria-pressed="true"]{background:var(--acc-soft);border-color:var(--acc);color:var(--acc)}
+.vstat{display:flex;gap:14px;flex-wrap:wrap;font:500 12px var(--mono);color:var(--ink-3);margin-bottom:10px;font-variant-numeric:tabular-nums}
+
+table.fields{width:100%;border-collapse:collapse;font-size:13px}
+table.fields th{text-align:left;font:500 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);padding:5px 8px;border-bottom:1px solid var(--line)}
+table.fields td{padding:6px 8px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+table.fields td.k{font:500 12px var(--mono);color:var(--ink-2);white-space:nowrap}
+table.fields td.v{font:400 12.5px var(--mono);overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+tr.diff td.v.pred{color:var(--bad)}
+tr.conv td.v.pred{color:var(--warn)}
+tr.same td.v.pred{color:var(--ok)}
+td.v.miss{color:var(--ink-3);font-style:italic}
+.raw{margin-top:12px}
+.raw summary{cursor:pointer;color:var(--ink-2);font-size:12.5px}
+.raw pre{margin:8px 0 0;padding:10px;background:var(--sheet-2);border:1px solid var(--line-soft);border-radius:7px;font:400 11.5px/1.5 var(--mono);overflow-x:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+
+footer{border-top:1px solid var(--line);padding-block:22px 40px;color:var(--ink-3);font-size:13px}
+</style>
+</head>
+<body>
+
+<nav class="nav"><div class="wrap">
+  <a class="brand" href="../"><b>R</b> receipt-vlm</a>
+  <ul>
+    <li><a class="nl" href="../">Field guide</a></li>
+    <li><a class="nl" href="../tour/">The tour</a></li>
+    <li><a class="nl" href="https://github.com/mazenDDr/receipt-vlm">GitHub</a></li>
+  </ul>
+  <button class="icon-btn" id="theme" type="button" aria-label="Switch theme">◐</button>
+</div></nav>
+
+<div class="wrap">
+  <header class="head">
+    <h1>What the model actually returned</h1>
+    <p class="lede">Every one of the 100 held-out receipts, exactly as they were scored. Pick one to see
+      the photograph beside what the base model, the fine-tuned model and the 4-bit build each produced,
+      field by field against CORD's labels.</p>
+    <p class="note">Nothing runs a model here: these are the recorded outputs from the evaluation, so the
+      page is free and instant. The test split was scored once, for final variants only.</p>
+    <div class="tallies" id="tallies"></div>
+  </header>
+
+  <div class="controls" id="controls"></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<dialog id="dlg"><div class="sheet">
+  <div class="shot">
+    <img id="d-img" alt="">
+    <div class="cap">
+      <span class="rid" id="d-rid" style="font:500 13px var(--mono)"></span>
+      <span id="d-size" style="color:var(--ink-3);font-size:12.5px"></span>
+    </div>
+  </div>
+  <div class="body">
+    <div class="dlg-head">
+      <h2 id="d-title">Receipt</h2>
+      <button class="close" id="d-close" type="button">Close</button>
+    </div>
+    <div class="variants" id="d-variants"></div>
+    <div class="vstat" id="d-stat"></div>
+    <div style="overflow-x:auto"><table class="fields">
+      <thead><tr><th>Key path</th><th>CORD label</th><th>Model</th></tr></thead>
+      <tbody id="d-rows"></tbody>
+    </table></div>
+    <details class="raw"><summary>Raw output</summary><pre id="d-raw"></pre></details>
+  </div>
+</div></dialog>
+
+<footer><div class="wrap">
+  Receipts from <a href="https://huggingface.co/datasets/naver-clova-ix/cord-v2">CORD v2</a>
+  (Park et al., 2019), CC BY 4.0. Model: Qwen2.5-VL-3B-Instruct, fine-tuned with QLoRA.
+  <a href="https://github.com/mazenDDr/receipt-vlm">Source</a>.
+</div></footer>
+
+<script>
+const DEMO = /*__DEMO__*/null;
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const receipts = DEMO.receipts;
+  const variants = DEMO.variants;          // [{key,label,note}]
+  let filter = "all";
+  let query = "";
+  let current = null;
+  let variantKey = "ft";
+
+  // Theme toggle, remembered per viewer.
+  try {
+    const saved = localStorage.getItem("rv-theme");
+    if (saved) document.documentElement.dataset.theme = saved;
+  } catch (e) { /* private window: keep the OS theme */ }
+  $("theme").addEventListener("click", () => {
+    const now = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = now;
+    try { localStorage.setItem("rv-theme", now); } catch (e) { /* ignore */ }
+  });
+
+  const BUCKETS = [
+    ["all", "All receipts", () => true],
+    ["exact", "Exact match", (r) => r.ft.exact],
+    ["digit", "Digit differs", (r) => r.tags.includes("digit")],
+    ["sep", "Separator only", (r) => r.tags.includes("separator")],
+    ["nest", "Nesting", (r) => r.tags.includes("nesting")],
+    ["fixed", "Base wrong, fine-tuned right", (r) => r.base.f1 < 0.6 && r.ft.f1 > 0.9],
+  ];
+
+  function matching(id) {
+    const test = BUCKETS.find((b) => b[0] === id)[2];
+    return receipts.filter((r) => test(r) &&
+      (!query || r.example_id.includes(query)));
+  }
+
+  const tallies = [
+    ["", "receipts", receipts.length],
+    ["ok", "exact match", receipts.filter((r) => r.ft.exact).length],
+    ["warn", "separator only", receipts.filter((r) => r.tags.includes("separator")).length],
+    ["bad", "invalid JSON", receipts.filter((r) => !r.ft.valid).length],
+  ];
+  $("tallies").innerHTML = tallies.map(([cls, label, n]) =>
+    `<div class="tally ${cls}"><b>${n}</b><span>${label}</span></div>`).join("");
+
+  function renderControls() {
+    const box = $("controls");
+    box.textContent = "";
+    BUCKETS.forEach(([id, label]) => {
+      const b = document.createElement("button");
+      b.className = "chip";
+      b.type = "button";
+      b.setAttribute("aria-pressed", String(filter === id));
+      b.innerHTML = label + ` <span class="n">${matching(id).length}</span>`;
+      b.addEventListener("click", () => { filter = id; renderControls(); renderGrid(); });
+      box.appendChild(b);
+    });
+    const search = document.createElement("div");
+    search.className = "search";
+    search.innerHTML = '<label for="q" style="font:500 11px var(--mono);letter-spacing:.08em;'
+      + 'text-transform:uppercase;color:var(--ink-3)">find</label>'
+      + '<input id="q" type="search" placeholder="cord-test-0035" value="' + query + '">';
+    box.appendChild(search);
+    search.querySelector("input").addEventListener("input", (e) => {
+      query = e.target.value.trim();
+      renderControls();
+      renderGrid();
+      const box2 = document.getElementById("q");
+      if (box2) { box2.focus(); box2.setSelectionRange(box2.value.length, box2.value.length); }
+    });
+  }
+
+  function stripe(r) {
+    if (r.ft.exact) return "var(--ok)";
+    if (r.tags.includes("separator") && !r.tags.includes("digit")) return "var(--warn)";
+    if (!r.ft.valid) return "var(--bad)";
+    return "var(--acc)";
+  }
+
+  function renderGrid() {
+    const grid = $("grid");
+    grid.textContent = "";
+    const list = matching(filter);
+    if (!list.length) {
+      grid.innerHTML = '<p style="color:var(--ink-3)">No receipt matches that.</p>';
+      return;
+    }
+    list.forEach((r) => {
+      const card = document.createElement("button");
+      card.className = "card";
+      card.type = "button";
+      card.innerHTML =
+        `<div class="stripe" style="background:${stripe(r)}"></div>` +
+        `<img loading="lazy" src="../receipts/${r.example_id}.jpg" alt="Receipt ${r.example_id}">` +
+        `<div class="meta"><span class="rid">${r.example_id.replace("cord-test-", "")}</span>` +
+        `<span class="f1" style="color:${stripe(r)}">${r.ft.f1.toFixed(2)}</span></div>`;
+      card.addEventListener("click", () => open(r));
+      grid.appendChild(card);
+    });
+  }
+
+  function cell(values) {
+    if (!values || !values.length) return '<td class="v miss">not present</td>';
+    return '<td class="v">' + values.map(esc).join(" · ") + "</td>";
+  }
+  function esc(s) {
+    return String(s).replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]));
+  }
+
+  function renderVariant() {
+    const r = current;
+    const v = r.variants[variantKey];
+    $("d-variants").textContent = "";
+    variants.forEach((meta) => {
+      const b = document.createElement("button");
+      b.className = "vtab";
+      b.type = "button";
+      b.textContent = meta.label;
+      b.setAttribute("aria-pressed", String(meta.key === variantKey));
+      b.addEventListener("click", () => { variantKey = meta.key; renderVariant(); });
+      $("d-variants").appendChild(b);
+    });
+    const meta = variants.find((m) => m.key === variantKey);
+    $("d-stat").innerHTML =
+      `<span>field F1 <b style="color:var(--ink)">${v.f1.toFixed(3)}</b></span>` +
+      `<span>${v.tokens} output tokens</span>` +
+      `<span>${v.latency.toFixed(2)} s</span>` +
+      `<span>${v.valid ? "valid JSON" : "did not parse"}</span>` +
+      `<span style="color:var(--ink-3)">${meta.note}</span>`;
+    $("d-rows").innerHTML = v.rows.map((row) => {
+      const cls = row.agrees ? "same" : (row.agrees_lenient ? "conv" : "diff");
+      const pred = row.pred && row.pred.length
+        ? '<td class="v pred">' + row.pred.map(esc).join(" · ") + "</td>"
+        : '<td class="v pred miss">not present</td>';
+      return `<tr class="${cls}"><td class="k">${esc(row.path)}</td>${cell(row.gold)}${pred}</tr>`;
+    }).join("");
+    $("d-raw").textContent = v.raw;
+  }
+
+  function open(r) {
+    current = r;
+    variantKey = "ft";
+    $("d-img").src = "../receipts/" + r.example_id + ".jpg";
+    $("d-img").alt = "Receipt " + r.example_id;
+    $("d-rid").textContent = r.example_id;
+    $("d-size").textContent = r.width + "×" + r.height;
+    $("d-title").textContent = r.ft.exact ? "Every field matches the label" :
+      r.n_disagreements + (r.n_disagreements === 1 ? " field differs" : " fields differ");
+    renderVariant();
+    $("dlg").showModal();
+    location.hash = r.example_id;
+  }
+
+  $("d-close").addEventListener("click", () => $("dlg").close());
+  $("dlg").addEventListener("close", () => {
+    if (location.hash) history.replaceState(null, "", location.pathname);
+  });
+  $("dlg").addEventListener("click", (e) => { if (e.target === $("dlg")) $("dlg").close(); });
+
+  renderControls();
+  renderGrid();
+  const deep = location.hash.slice(1);
+  const found = receipts.find((r) => r.example_id === deep);
+  if (found) open(found);
+})();
+</script>
+</body>
+</html>

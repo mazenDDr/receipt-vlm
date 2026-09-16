@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 340" width="880" height="340" role="img" aria-label="A real receipt read by the model before and after fine-tuning. Before: 494 tokens, every item nested inside the last, the count inside the name, an invented total, field F1 0.10. After: 126 tokens matching the labels exactly, field F1 1.00.">
+  <title>The same receipt, before and after fine-tuning</title>
+  <style>
+    .bg{fill:#ECEEF1}
+    .card{fill:#FFFFFF;stroke:#DCE0E6}
+    .paper{fill:#FFFFFF;stroke:#D7DCE3}
+    .mono{font:400 10.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#171B21}
+    .dim{fill:#6B7480}
+    .lab{font:600 9.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#6B7480;letter-spacing:.1em}
+    .hd{font:600 12px -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;fill:#171B21}
+    .tiny{font:400 9.5px -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;fill:#6B7480}
+    .bad{fill:#C0392B}
+    .ok{fill:#2E7D4F}
+    .acc{fill:#2D5BD6}
+    .scan{fill:#2D5BD6;opacity:.16}
+    .rule{stroke:#E4E8ED}
+    .badbox{fill:none;stroke:#C0392B;stroke-width:1.4}
+    .okbox{fill:none;stroke:#2E7D4F;stroke-width:1.4}
+    .tick{fill:none;stroke:#2E7D4F;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:34;stroke-dashoffset:34}
+    /* The reveal finishes by 55% so the completed figure holds for most of every loop. */
+    @keyframes sweep{0%{transform:translateY(0)}12%{transform:translateY(196px)}16%,100%{transform:translateY(196px);opacity:0}}
+    @keyframes showA{0%,14%{opacity:0}21%,100%{opacity:1}}
+    @keyframes showB{0%,28%{opacity:0}35%,100%{opacity:1}}
+    @keyframes drawTick{0%,38%{stroke-dashoffset:34}46%,100%{stroke-dashoffset:0}}
+    @keyframes showC{0%,48%{opacity:0}55%,100%{opacity:1}}
+    .scan{animation:sweep 11s infinite}
+    .before{animation:showA 11s infinite}
+    .after{animation:showB 11s infinite}
+    .tick{animation:drawTick 11s infinite}
+    .foot{animation:showC 11s infinite}
+    /* Reduced motion: show the finished figure. The scan bar is pure motion, so it goes entirely -
+       left in place it would freeze as a block across the receipt header. */
+    @media (prefers-reduced-motion:reduce){*{animation:none!important;opacity:1!important;stroke-dashoffset:0!important}.scan{display:none}}
+  </style>
+  <rect class="bg" width="880" height="340" rx="14"/>
+
+  <!-- the receipt -->
+  <text class="lab" x="30" y="30">THE RECEIPT · CORD TEST 0035</text>
+  <g>
+    <rect class="paper" x="30" y="40" width="196" height="236" rx="2"/>
+    <text class="mono" x="44" y="62">DUNKIN DONUTS</text>
+    <line class="rule" x1="44" y1="72" x2="212" y2="72"/>
+    <text class="mono" x="44" y="90">2 TWIST DONUT</text>
+    <text class="mono dim" x="150" y="90">18,000</text>
+    <text class="mono" x="44" y="108">1 BANANA DONUT</text>
+    <text class="mono dim" x="150" y="108">11,000</text>
+    <text class="mono" x="44" y="126">1 CREAMCHEESE</text>
+    <text class="mono dim" x="150" y="126">13,000</text>
+    <text class="mono" x="44" y="144">1 FRANKFRUT</text>
+    <text class="mono dim" x="150" y="144">12,000</text>
+    <line class="rule" x1="44" y1="156" x2="212" y2="156"/>
+    <text class="mono" x="44" y="176">TOTAL</text>
+    <text class="mono" x="150" y="176">54,000</text>
+    <text class="mono dim" x="44" y="194">CASH</text>
+    <text class="mono dim" x="150" y="194">104,000</text>
+    <text class="mono dim" x="44" y="212">CHANGE</text>
+    <text class="mono dim" x="150" y="212">50,000</text>
+    <line class="rule" x1="44" y1="224" x2="212" y2="224"/>
+    <text class="mono dim" x="44" y="244">THANK YOU</text>
+    <rect class="scan" x="31" y="41" width="194" height="16"/>
+  </g>
+
+  <!-- before -->
+  <g class="before">
+    <text class="lab" x="250" y="30">BEFORE · QWEN2.5-VL-3B, ZERO-SHOT</text>
+    <rect class="card badbox" x="250" y="40" width="288" height="236" rx="6"/>
+    <text class="mono" x="262" y="60">{"menu": [{</text>
+    <text class="mono bad" x="262" y="78">  "nm": "2 TWIST DONUT",</text>
+    <text class="tiny bad" x="262" y="92">  the count swallowed into the name</text>
+    <text class="mono dim" x="262" y="112">  "num": "", "vatyn": "",</text>
+    <text class="mono dim" x="262" y="130">  "itemsubtotal": "", "etc": "",</text>
+    <text class="tiny dim" x="262" y="144">  every key emitted, most of them blank</text>
+    <text class="mono bad" x="262" y="164">  "sub": [{ "sub": [{ "sub": […</text>
+    <text class="tiny bad" x="262" y="178">  each item nested inside the last, 4 deep</text>
+    <text class="mono bad" x="262" y="198">"tax_price": "104,000"</text>
+    <text class="tiny bad" x="262" y="212">  that is the cash the customer paid</text>
+    <text class="mono bad" x="262" y="232">"total_price": "158,000"</text>
+    <text class="tiny bad" x="262" y="246">  the receipt says 54,000</text>
+    <text class="hd bad" x="262" y="268">494 tokens · field F1 0.10</text>
+  </g>
+
+  <!-- after -->
+  <g class="after">
+    <text class="lab" x="562" y="30">AFTER · QLORA FINE-TUNE, SAME PROMPT</text>
+    <rect class="card okbox" x="562" y="40" width="288" height="236" rx="6"/>
+    <text class="mono" x="574" y="62">{"menu":[</text>
+    <text class="mono" x="574" y="80"> {"nm":"TWIST DONUT",</text>
+    <text class="mono acc" x="574" y="98">  "cnt":"2","price":"18,000"},</text>
+    <text class="mono" x="574" y="116"> {"nm":"BANANA DONUT",</text>
+    <text class="mono acc" x="574" y="134">  "cnt":"1","price":"11,000"},</text>
+    <text class="mono dim" x="574" y="152"> … 2 more items</text>
+    <text class="mono" x="574" y="170">],"total":{</text>
+    <text class="mono acc" x="574" y="188"> "total_price":"54,000",</text>
+    <text class="mono acc" x="574" y="206"> "cashprice":"104,000",</text>
+    <text class="mono acc" x="574" y="224"> "changeprice":"50,000"}}</text>
+    <path class="tick" d="M576 258 l7 8 l14 -17"/>
+    <text class="hd ok" x="604" y="264">126 tokens · field F1 1.00 · exact match</text>
+  </g>
+
+  <text class="tiny foot" x="30" y="300">Same image, same prompt, nothing else changed. Across the 100-receipt test split, fine-tuning moved field F1 from 0.440 to 0.836 (paired +0.396 [+0.345, +0.442]).</text>
+  <text class="tiny foot" x="30" y="318">The 4-bit AWQ build reproduces the fine-tuned output here byte for byte, in 1.24 s instead of 17.2 s.</text>
+</svg>

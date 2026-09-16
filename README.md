@@ -1,107 +1,79 @@
-# receipt-vlm
+<p align="center">
+  <img src="docs/assets/hero.svg" width="100%" alt="The same receipt read before and after fine-tuning. Before: 494 tokens, every item nested inside the last, the count swallowed into the name, an invented total, field F1 0.10. After: 126 tokens matching the labels exactly, field F1 1.00.">
+</p>
 
-Fine-tuning and quantizing a small vision-language model to read receipts, and measuring what each step
-actually costs.
+<h1 align="center">receipt-vlm</h1>
 
-A receipt photo goes in; the fields come out as JSON — menu items with counts and prices, subtotal, tax,
-total, payment. The model is **Qwen2.5-VL-3B-Instruct**, fine-tuned with QLoRA on
-[CORD v2](https://huggingface.co/datasets/naver-clova-ix/cord-v2) and quantized four different ways.
+<p align="center">
+  <b>Photograph a till receipt. Get its fields back as JSON — every item, count, price, tax and total.</b><br>
+  A 3B vision-language model fine-tuned on one consumer GPU, quantized four ways, and measured at every step.
+</p>
 
-Everything below is measured on a held-out test split of 100 receipts, scored once. Differences are paired
-bootstrap comparisons over the same receipts; a difference is called **real** only when its 95% interval
-excludes zero.
+<p align="center">
+  <a href="https://mazenddr.github.io/receipt-vlm/"><b>Field guide</b></a> (every part explained, with animations)
+  &nbsp;·&nbsp;
+  <a href="https://mazenddr.github.io/receipt-vlm/tour/"><b>The tour</b></a> (one receipt, start to finish)
+  &nbsp;·&nbsp;
+  <a href="https://mazenddr.github.io/receipt-vlm/demo/"><b>See it work</b></a> (100 recorded extractions)
+  &nbsp;·&nbsp;
+  <a href="docs/blog.md"><b>The story</b></a> (two bugs that looked like findings)
+</p>
 
-## Results
+---
 
-| | Test field F1 | Weights | Latency p50 | Output tok/s |
-|---|---|---|---|---|
-| Base model, zero-shot | 0.440 | 7.16 GiB | 14.33 s | 24.2 |
-| **Fine-tuned (QLoRA r16)** | **0.836** | — | 13.22 s | 7.8 |
-| Fine-tuned, merged bf16, on vLLM | 0.852 | 7.16 GiB | 2.07 s | 51.1 |
-| **AWQ W4A16, on vLLM** | **0.847** | **3.31 GiB** | **1.05 s** | **103.1** |
-| GGUF bf16, on llama.cpp | 0.846 | 8.24 GiB | 2.57 s | 41.4 |
-| **GGUF Q4_K_M, on llama.cpp** | **0.832** | 4.28 GiB | 1.51 s | 75.4 |
-| GGUF Q2_K + imatrix | 0.791 | 3.67 GiB | 1.51 s | 76.8 |
+## Results at a glance
 
-Fine-tuning nearly doubles field F1: **0.440 → 0.836**, a paired gain of **+0.396 [+0.345, +0.442]**.
-
-Full tables, every bit width and all the paired comparisons: **[docs/tradeoffs.md](docs/tradeoffs.md)**.
-
-![Field F1 against latency per receipt, by runtime and bit width](docs/tradeoffs.svg)
-
-## Four things worth knowing
-
-**1. Quantizing to 4 bits is close to free.** On test, AWQ W4A16 differs from the bf16 model it was built
-from by −0.005 [−0.026, +0.013], and GGUF Q4_K_M from its own bf16 reference by −0.014 [−0.038, +0.009].
-Neither is real. Both are roughly half the size and substantially faster.
-
-**2. The runtime matters more than the bit width.** The same fine-tuned weights take **13.22 s** per receipt
-in transformers and **1.05 s** as AWQ on vLLM. That gap is larger than the entire spread across every GGUF
-bit width tested. Picking the serving stack was a bigger decision than picking the precision.
-
-**3. The model reads receipts well and misfiles what it reads.** All 100 test receipts produced valid JSON —
-no format failures at all. The worst receipt has every value correct and the keys wrong. The second worst
-reads all eight items correctly, then nests six of them under item three. See
-**[docs/failure_taxonomy.md](docs/failure_taxonomy.md)**:
-
-| What went wrong | Receipts |
+| | |
 |---|---|
-| Exactly correct | 41% |
-| Digit difference | 16% |
-| Separator or whitespace only | 15% |
-| Nesting error | 9% |
-| Invalid JSON or truncated | **0%** |
+| **Fine-tuning** | Field F1 on 100 held-out receipts: **0.440 → 0.836**, a paired gain of **+0.396 [+0.345, +0.442]**. 39 receipts come back exactly right; 28 that the base model failed are now correct. |
+| **Quantization** | 4-bit is **free**: AWQ W4A16 differs from its bf16 source by −0.005 [−0.026, +0.013], GGUF Q4_K_M from its own reference by −0.014 [−0.038, +0.009]. Neither is real. |
+| **Speed** | The **runtime** matters more than the bit width: the same weights take **13.22 s** per receipt in transformers and **1.05 s** as AWQ on vLLM — a bigger gap than every GGUF bit width combined. |
+| **Errors** | **0 of 100** outputs were invalid JSON. The worst receipt has every value correct and every key wrong: the model reads receipts well and misfiles what it reads. |
+| **Cost** | **$0.** Open weights throughout — Qwen2.5-VL-3B-Instruct on one RTX 5060 Ti, 16 GB. |
 
-So the remaining headroom is structural, not perceptual — which points at schema-aware or constrained
-decoding rather than more training data.
+## How it works
 
-**4. The expectation going in was wrong.** This project set out to find whether 4-bit quantization hurts
-*digits* before *text*. It does not. Down to 4 bits nothing degrades measurably at all; below 4 bits
-everything degrades together. The one place digits stand out is at 2–3 bits, where numeric F1 falls while
-overall F1 is still within noise.
+<p align="center"><img src="docs/assets/pipeline.svg" width="100%" alt="The pipeline: data, train, merge, quantize, serve. Each stage writes files the next one reads."></p>
 
-## Two bugs that produced convincing wrong answers
+1. **Data.** [CORD v2](https://huggingface.co/datasets/naver-clova-ix/cord-v2): 1,000 photographed receipts labelled as JSON. Every image is hashed perceptually across splits first — **28 near-duplicates appeared in more than one split** and were dropped, leaving 773 / 99 / 100. [→ guide](https://mazenddr.github.io/receipt-vlm/#data)
+2. **Fine-tune.** QLoRA: NF4 base, vision tower in bf16, LoRA on the language model only, loss on answer tokens alone. Fits in 16 GB. [→ guide](https://mazenddr.github.io/receipt-vlm/#train)
+3. **Merge.** The adapter folds into bf16 — one set of weights to quantize, and the reference every quantized row is measured against. [→ guide](https://mazenddr.github.io/receipt-vlm/#quantize)
+4. **Quantize.** AWQ W4A16 for vLLM, and seven GGUF bit widths for llama.cpp. [→ guide](https://mazenddr.github.io/receipt-vlm/#quantize)
+5. **Serve.** `POST /extract` returns the fields plus the latency, tokens and throughput that answer cost. The runtime is config, not code. [→ guide](https://mazenddr.github.io/receipt-vlm/#serve)
 
-Both were caught by checking a result that looked too dramatic, and both are worth reading if you work with
-quantized VLMs:
+## What the experiments found
 
-**The vision projector must be f32.** Built at f16, llama.cpp emitted floods of `!` tokens on particular
-receipts — content-dependent, deterministic, and completely silent in the server logs. f16 saturates at
-65504; the projector runs in bf16 everywhere else, so only the GGUF path overflowed into NaN. Field F1
-0.540 with 60% truncation at f16; 0.899 at f32, same weights. The projector cannot be quantized, so it is a
-fixed 2.49 GiB on every GGUF row — which is why no GGUF bit width undercuts AWQ's 3.31 GiB on disk.
+### Fine-tuning is the only change that moves accuracy much
 
-**K-quants below Q4 need an importance matrix.** Without one, Q3_K_M scored 0.100 and Q2_K emitted a median
-of three tokens. That looked like a dramatic bit-width cliff, and it was reported as one before being
-tested. It was not: `llama-imatrix` had never been built, so `make_gguf.sh` could only produce uncalibrated
-K-quants. With a matrix built from the training receipts, Q3_K_M scores 0.858 and Q2_K 0.876. Both the
-uncalibrated and calibrated rows are kept in the tables, because the difference between them is the finding.
+<p align="center"><img src="docs/assets/finetune.svg" width="100%" alt="Field F1 on the test split: base 0.440, fine-tuned 0.836, paired difference +0.396 with a 95% interval from +0.345 to +0.442."></p>
 
-## Method
+Every comparison here is paired over the same receipts with a 95% bootstrap interval, and counts as real only when that interval excludes zero. Most things I tried were not real: rank 8 and rank 32 both scored below rank 16, adapting the vision projector as well scored 0.867 against 0.900, and partial fine-tuning of the last four layers reached 0.817. Full table: [`docs/ablations.md`](docs/ablations.md).
 
-- **Splits.** CORD's `validation` is the dev split used for every choice: prompt, image cap, LoRA rank,
-  learning rate, checkpoint, bit width. Test was scored only for final variants. 28 cross-split duplicate
-  images were found by perceptual hash and dropped, leaving 773 / 99 / 100.
-- **Scoring.** Field-level F1 over flattened `(key path, value)` pairs, following Donut's CORD evaluation so
-  the numbers can be read next to published ones, plus JSON validity, receipt exact match and tree-edit
-  accuracy. Reported overall, on numeric keys and on text keys.
-- **Uncertainty.** Percentile bootstrap over receipts, 2,000 resamples, and paired differences between
-  variants on the same receipts.
-- **Ablations.** Learning rate, LoRA rank, language-model layers vs. also the vision projector, QLoRA vs.
-  bf16 LoRA, and partial full fine-tuning — all on dev: **[docs/ablations.md](docs/ablations.md)**.
+### Four bits costs nothing. Below four, it depends on calibration.
 
-## Running it
+<p align="center"><img src="docs/assets/quantization.svg" width="100%" alt="Field F1 by GGUF bit width: bf16 through Q4_K_M all near 0.90; Q3_K_M 0.100 and Q2_K 0.000 without an importance matrix, recovering to 0.858 and 0.876 with one."></p>
 
-Code is written locally and runs on a remote GPU (RTX 5060 Ti, 16 GB) through the `./gpu` helper
-(`./gpu push`, `./gpu run`, `./gpu status`, `./gpu pull`), which wraps `rsync`, `ssh` and `tmux`.
+Everything from Q8_0 down to Q4_K_M sits within noise of bf16 **and is faster**. The drop at Q3 and Q2 looked like a clean bit-width cliff, and I wrote it up as one — before testing it. It was not: our own build script never compiled `llama-imatrix`, so those rows were quantized without calibration. With an importance matrix built from the training receipts they recover to 0.858 and 0.876.
 
-```bash
-make setup   # local venv, light dependencies
-make check   # ruff + 89 unit tests, CPU only, no model downloads
-```
+On the test split, though, Q2_K+imatrix does fall behind for real (−0.054 [−0.092, −0.020]) — the dev tie did not survive. **Q4_K_M is the row to ship.** Full table and every paired comparison: [`docs/tradeoffs.md`](docs/tradeoffs.md).
 
-Serving the quantized model — one receipt in, its fields out, with a per-request readout of latency and
-tokens:
+### The vision projector cannot be quantized, and must not be f16
+
+<p align="center"><img src="docs/assets/projector.svg" width="100%" alt="With an f16 projector, 6 of 10 receipts flood exclamation marks and field F1 is 0.540; at f32 the same weights score 0.899 with nothing truncated."></p>
+
+Built at f16 it overflows into NaN on particular receipts and the model emits `!` until it hits the token cap — content-dependent, deterministic, and silent, with the server reporting normal throughput throughout. Four other explanations were tested and ruled out before this one was found. At f32 it is a fixed **2.49 GiB** on every GGUF row, which is why no GGUF build undercuts the AWQ checkpoint's 3.31 GiB on disk.
+
+### The model reads receipts well and misfiles what it reads
+
+<p align="center"><img src="docs/assets/failures.svg" width="100%" alt="Of 100 test receipts: 41 exactly correct, 16 with a digit difference, 15 differing only in separators, 9 with a nesting error, 0 with invalid JSON."></p>
+
+Reading the twenty worst receipts against their photographs, then counting every pattern found that way across the whole dev split, gives a different picture from the aggregate. Separator conventions alone account for about a third of the numeric gap — strict numeric F1 0.866 against 0.910 lenient. The remaining headroom is **structural, not perceptual**, which points at constrained decoding rather than more data. Details: [`docs/failure_taxonomy.md`](docs/failure_taxonomy.md) and [`docs/annotation_guidelines.md`](docs/annotation_guidelines.md).
+
+## Try it
+
+**Instantly, in the browser:** [100 recorded extractions](https://mazenddr.github.io/receipt-vlm/demo/) — every held-out receipt with what the base model, the fine-tuned model and both 4-bit builds returned, field by field against the labels, filterable by what went wrong. Nothing runs a model, so it is free and immediate.
+
+**Locally**, one receipt in and its fields out:
 
 ```bash
 pip install -e ".[serve]"
@@ -116,7 +88,14 @@ docker build -t receipt-vlm .
 docker run --gpus all -p 8000:8000 -v /path/to/awq-checkpoint:/models/awq:ro receipt-vlm
 ```
 
-There is no hosted demo. `python -m receipt_vlm.serve.gradio_app` runs one locally.
+There is no hosted demo: a free CPU tier would serve a 3B vision model at a few tokens per second, which would misrepresent something that runs at 103 tok/s on a GPU.
+
+## Method
+
+- **Splits.** Every choice — prompt, image cap, LoRA rank, learning rate, checkpoint, bit width — was made on dev. Test was scored once, for final variants only.
+- **Scoring.** Field-level F1 over flattened `(key path, value)` pairs following Donut's CORD evaluation, so the numbers sit alongside published ones, plus JSON validity, receipt exact match and tree-edit accuracy. Reported overall, on numeric keys and on text keys.
+- **Uncertainty.** Percentile bootstrap over receipts, 2,000 resamples; differences between variants are paired on the same receipts.
+- **Reproducibility.** Every page and document is generated from the committed runs by `scripts/tradeoffs_doc.py` and `scripts/build_site.py`. No number is typed in by hand.
 
 ## Repository
 
@@ -124,13 +103,24 @@ There is no hosted demo. `python -m receipt_vlm.serve.gradio_app` runs one local
 src/receipt_vlm/
   data/     CORD → normalized examples, splits, leakage check
   eval/     field F1, TED, bootstrap, paired comparisons
-  infer/    transformers, vLLM and llama.cpp backends behind one interface
+  infer/    transformers, vLLM and llama.cpp behind one interface
   train/    QLoRA trainer and the ablation sweep
   quant/    adapter merge and AWQ
   serve/    FastAPI endpoint and Gradio demo
-docs/       tradeoffs, failure taxonomy, ablations
+docs/       trade-offs, failure taxonomy, annotation guidelines, ablations, the story
+site/       the field guide, the tour and the recorded extractions
 outputs/runs/<run_id>/   every run's config, summary and report
 ```
 
-Data (CC BY 4.0): CORD v2, Park et al., *CORD: A Consolidated Receipt Dataset for Post-OCR Parsing*, 2019.
-Base model: Qwen2.5-VL-3B-Instruct.
+```bash
+make setup   # local venv, light dependencies
+make check   # ruff + 89 unit tests, CPU only, no model downloads
+```
+
+## Credits
+
+Receipts from [CORD v2](https://huggingface.co/datasets/naver-clova-ix/cord-v2) (Park et al., *CORD: A Consolidated Receipt Dataset for Post-OCR Parsing*, 2019), CC BY 4.0.
+Base model [Qwen2.5-VL-3B-Instruct](https://huggingface.co/Qwen/Qwen2.5-VL-3B-Instruct).
+Quantization with [llm-compressor](https://github.com/vllm-project/llm-compressor) and [llama.cpp](https://github.com/ggerganov/llama.cpp); serving with [vLLM](https://github.com/vllm-project/vllm).
+
+Licensed under the [MIT License](LICENSE).

@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 280" width="880" height="280" role="img" aria-label="The vision projector built at f16 overflows into NaN on some receipts and the model emits the exclamation mark token until it hits the 1024 token cap: 6 of 10 receipts flooded, field F1 0.540 with 60 percent truncated. Built at f32 the same weights score 0.899 with nothing truncated.">
+  <title>Why the vision projector has to be f32</title>
+  <style>
+    .bg{fill:#ECEEF1}
+    .card{fill:#FFFFFF;stroke:#DCE0E6}
+    .badbox{fill:#FFFFFF;stroke:#C0392B;stroke-width:1.4}
+    .okbox{fill:#FFFFFF;stroke:#2E7D4F;stroke-width:1.4}
+    .lab{font:600 9.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#6B7480;letter-spacing:.1em}
+    .t{font:600 12px -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;fill:#171B21}
+    .s{font:400 9.8px -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;fill:#6B7480}
+    .mono{font:400 10.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#171B21}
+    .flood{font:700 13px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#C0392B;letter-spacing:.06em}
+    .bad{fill:#C0392B}
+    .ok{fill:#2E7D4F}
+    .acc{fill:#2D5BD6}
+    .chip{fill:#F2F4F7;stroke:#DCE0E6}
+    .arr{fill:none;stroke:#B9C0CA;stroke-width:1.5;marker-end:url(#p)}
+    .arrbad{fill:none;stroke:#C0392B;stroke-width:1.6;marker-end:url(#pb)}
+    /* The reveal finishes by 52% so both panels hold for most of every loop. */
+    @keyframes f1{0%,6%{opacity:0}11%,100%{opacity:1}}
+    @keyframes f2{0%,12%{opacity:0}17%,100%{opacity:1}}
+    @keyframes f3{0%,18%{opacity:0}23%,100%{opacity:1}}
+    @keyframes f4{0%,24%{opacity:0}29%,100%{opacity:1}}
+    @keyframes showbad{0%,31%{opacity:0}38%,100%{opacity:1}}
+    @keyframes showfix{0%,44%{opacity:0}52%,100%{opacity:1}}
+    .r1{animation:f1 11s infinite}.r2{animation:f2 11s infinite}
+    .r3{animation:f3 11s infinite}.r4{animation:f4 11s infinite}
+    .badstat{animation:showbad 11s infinite}
+    .fix{animation:showfix 11s infinite}
+    @media (prefers-reduced-motion:reduce){*{animation:none!important;opacity:1!important}}
+  </style>
+  <defs>
+    <marker id="p" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#B9C0CA"/></marker>
+    <marker id="pb" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#C0392B"/></marker>
+  </defs>
+  <rect class="bg" width="880" height="280" rx="14"/>
+
+  <text class="lab" x="28" y="26">THE SAME WEIGHTS · ONLY THE PROJECTOR'S PRECISION CHANGED</text>
+
+  <!-- f16 path -->
+  <rect class="badbox" x="28" y="40" width="404" height="170" rx="8"/>
+  <text class="t bad" x="44" y="62">mmproj-f16.gguf</text>
+  <text class="s" x="44" y="80">f16 saturates at 65504. The vision tower runs in bf16</text>
+  <text class="s" x="44" y="94">everywhere else, so only this path overflowed.</text>
+
+  <rect class="chip" x="44" y="106" width="86" height="24" rx="5"/>
+  <text class="mono" x="54" y="122">receipt</text>
+  <path class="arr" d="M132 118 H154"/>
+  <rect class="chip" x="158" y="106" width="96" height="24" rx="5"/>
+  <text class="mono bad" x="168" y="122">projector</text>
+  <path class="arrbad" d="M256 118 H278"/>
+  <rect class="chip" x="282" y="106" width="70" height="24" rx="5"/>
+  <text class="mono bad" x="292" y="122">NaN</text>
+
+  <text class="flood r1" x="44" y="152">!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!</text>
+  <text class="flood r2" x="44" y="168">!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!</text>
+  <text class="flood r3" x="44" y="184">!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!</text>
+  <text class="s r4" x="44" y="202">… until it hits the 1024-token cap</text>
+
+  <g class="badstat">
+    <text class="t bad" x="44" y="232">6 of 10 receipts flooded · field F1 0.540 · 60% truncated</text>
+    <text class="s" x="44" y="250">Content-dependent, deterministic, and silent: the server logged</text>
+    <text class="s" x="44" y="264">normal prompt evaluation and 57 tokens per second throughout.</text>
+  </g>
+
+  <!-- f32 path -->
+  <g class="fix">
+    <rect class="okbox" x="448" y="40" width="404" height="170" rx="8"/>
+    <text class="t ok" x="464" y="62">mmproj-f32.gguf</text>
+    <text class="s" x="464" y="80">Rebuilt at f32. Nothing else changed: same text weights,</text>
+    <text class="s" x="464" y="94">same prompt, same image cap, same decoding.</text>
+
+    <rect class="chip" x="464" y="106" width="86" height="24" rx="5"/>
+    <text class="mono" x="474" y="122">receipt</text>
+    <path class="arr" d="M552 118 H574"/>
+    <rect class="chip" x="578" y="106" width="96" height="24" rx="5"/>
+    <text class="mono ok" x="588" y="122">projector</text>
+    <path class="arr" d="M676 118 H698"/>
+    <rect class="chip" x="702" y="106" width="136" height="24" rx="5"/>
+    <text class="mono ok" x="712" y="122">{"menu":[…</text>
+
+    <text class="mono" x="464" y="154">{"menu":[{"nm":"BAKSO BNGKS",</text>
+    <text class="mono" x="464" y="172"> "cnt":"1","price":"15.000"}…</text>
+    <text class="s" x="464" y="190">prompt tokens identical to vLLM, receipt for receipt</text>
+
+    <text class="t ok" x="464" y="232">0 of 10 flooded · field F1 0.899 · nothing truncated</text>
+    <text class="s" x="464" y="250">The projector cannot be quantized, so it is a fixed 2.49 GiB on</text>
+    <text class="s acc" x="464" y="264">every GGUF row — 68% of the smallest one's total.</text>
+  </g>
+</svg>

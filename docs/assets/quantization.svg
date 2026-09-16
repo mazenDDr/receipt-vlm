@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 300" width="880" height="300" role="img" aria-label="Field F1 on the dev split by GGUF bit width. bf16 0.901, Q8_0 0.901, Q6_K 0.899, Q5_K_M 0.905 and Q4_K_M 0.897 are all within noise of each other. Q3_K_M falls to 0.100 and Q2_K to 0.000. With an importance matrix the same two rows recover to 0.858 and 0.876.">
+  <title>The cliff was a missing importance matrix, not the bit width</title>
+  <style>
+    .bg{fill:#ECEEF1}
+    .card{fill:#FFFFFF;stroke:#DCE0E6}
+    .lab{font:600 9.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#6B7480;letter-spacing:.1em}
+    .t{font:600 11.5px -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;fill:#171B21}
+    .s{font:400 9.6px -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;fill:#6B7480}
+    .ax{font:400 9px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#8A93A1}
+    .tick{font:500 9.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#6B7480}
+    .grid{stroke:#E4E8ED}
+    .ref{stroke:#2E7D4F;stroke-width:1.3;stroke-dasharray:4 4}
+    .bar{fill:#2E7D4F;transform-box:fill-box;transform-origin:center bottom}
+    .barbad{fill:#C0392B;transform-box:fill-box;transform-origin:center bottom}
+    .barfix{fill:#2D5BD6;transform-box:fill-box;transform-origin:center bottom}
+    .val{font:600 10px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#171B21}
+    .bad{fill:#C0392B}
+    .acc{fill:#2D5BD6}
+    .ok{fill:#2E7D4F}
+    .arrow{fill:none;stroke:#2D5BD6;stroke-width:1.8;marker-end:url(#tip);stroke-dasharray:70;stroke-dashoffset:70}
+    /* The reveal finishes by 58% so the completed chart holds for most of every loop. */
+    @keyframes rise{0%,3%{transform:scaleY(0)}16%,100%{transform:scaleY(1)}}
+    @keyframes risebad{0%,18%{transform:scaleY(0)}28%,100%{transform:scaleY(1)}}
+    @keyframes showbad{0%,30%{opacity:0}36%,100%{opacity:1}}
+    @keyframes risefix{0%,40%{transform:scaleY(0)}50%,100%{transform:scaleY(1)}}
+    @keyframes drawarr{0%,40%{stroke-dashoffset:70}50%,100%{stroke-dashoffset:0}}
+    @keyframes showfix{0%,52%{opacity:0}58%,100%{opacity:1}}
+    .bar{animation:rise 12s infinite}
+    .barbad{animation:risebad 12s infinite}
+    .badnote{animation:showbad 12s infinite}
+    .barfix{animation:risefix 12s infinite}
+    .arrow{animation:drawarr 12s infinite}
+    .fixnote{animation:showfix 12s infinite}
+    @media (prefers-reduced-motion:reduce){*{animation:none!important;opacity:1!important;transform:scaleY(1)!important;stroke-dashoffset:0!important}}
+  </style>
+  <defs>
+    <marker id="tip" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0 0 L8 4 L0 8 z" fill="#2D5BD6"/>
+    </marker>
+  </defs>
+  <rect class="bg" width="880" height="300" rx="14"/>
+
+  <text class="lab" x="28" y="26">FIELD F1 BY GGUF BIT WIDTH · 99 DEV RECEIPTS</text>
+
+  <!-- scale: y=210 is 0.0, y=50 is 1.0 -->
+  <line class="grid" x1="70" y1="210" x2="852" y2="210"/>
+  <line class="grid" x1="70" y1="130" x2="852" y2="130"/>
+  <text class="ax" x="40" y="214">0.0</text>
+  <text class="ax" x="40" y="134">0.5</text>
+  <text class="ax" x="40" y="54">1.0</text>
+  <line class="ref" x1="70" y1="66" x2="570" y2="66"/>
+  <text class="ax ok" x="446" y="88">bf16 reference · 0.901</text>
+
+  <!-- healthy rows: bf16 .901 Q8 .901 Q6 .899 Q5 .905 Q4 .897 -->
+  <rect class="bar" x="84" y="66" width="52" height="144"/>
+  <text class="val" x="86" y="60">0.901</text>
+  <text class="tick" x="92" y="228">bf16</text>
+
+  <rect class="bar" x="152" y="66" width="52" height="144"/>
+  <text class="val" x="154" y="60">0.901</text>
+  <text class="tick" x="160" y="228">Q8_0</text>
+
+  <rect class="bar" x="220" y="66" width="52" height="144"/>
+  <text class="val" x="222" y="60">0.899</text>
+  <text class="tick" x="226" y="228">Q6_K</text>
+
+  <rect class="bar" x="288" y="65" width="52" height="145"/>
+  <text class="val" x="290" y="59">0.905</text>
+  <text class="tick" x="290" y="228">Q5_K_M</text>
+
+  <rect class="bar" x="356" y="67" width="52" height="143"/>
+  <text class="val" x="358" y="61">0.897</text>
+  <text class="tick" x="358" y="228">Q4_K_M</text>
+
+  <!-- the cliff -->
+  <rect class="barbad" x="446" y="194" width="52" height="16"/>
+  <text class="val bad" x="448" y="188">0.100</text>
+  <text class="tick" x="448" y="228">Q3_K_M</text>
+
+  <rect class="barbad" x="514" y="208" width="52" height="2"/>
+  <text class="val bad" x="516" y="202">0.000</text>
+  <text class="tick" x="522" y="228">Q2_K</text>
+
+  <g class="badnote">
+    <text class="t bad" x="446" y="252">without an importance matrix</text>
+    <text class="s" x="446" y="268">Q2_K emitted a median of three tokens.</text>
+    <text class="s" x="446" y="282">It looked exactly like a bit-width cliff.</text>
+  </g>
+
+  <!-- the fix -->
+  <rect class="barfix" x="604" y="73" width="52" height="137"/>
+  <text class="val acc" x="606" y="67">0.858</text>
+  <text class="tick" x="604" y="228">Q3_K_M</text>
+  <text class="tick acc" x="608" y="240">+imat</text>
+
+  <rect class="barfix" x="672" y="70" width="52" height="140"/>
+  <text class="val acc" x="674" y="64">0.876</text>
+  <text class="tick" x="678" y="228">Q2_K</text>
+  <text class="tick acc" x="676" y="240">+imat</text>
+
+  <path class="arrow" d="M572 150 C 590 150, 592 110, 600 92"/>
+
+  <g class="fixnote">
+    <rect class="card" x="744" y="118" width="108" height="86" rx="7"/>
+    <text class="s acc" x="756" y="138">llama-imatrix</text>
+    <text class="s" x="756" y="154">was never built</text>
+    <text class="s" x="756" y="168">by our own build</text>
+    <text class="s" x="756" y="182">script, so these</text>
+    <text class="s" x="756" y="196">were uncalibrated.</text>
+  </g>
+
+  <text class="s" x="28" y="296">On the test split Q2_K+imatrix does fall behind for real (−0.054 [−0.092, −0.020]); the dev tie did not survive. Q4_K_M is the row to ship.</text>
+</svg>
