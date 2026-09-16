@@ -24,12 +24,16 @@ OVERRIDES = (
     "backend",
     "variant",
     "split",
+    "offset",
     "limit",
     "max_pixels",
     "max_new_tokens",
+    "max_model_len",
     "repetition_penalty",
     "precision",
     "adapter",
+    "mmproj",
+    "llama_server",
 )
 
 
@@ -40,13 +44,19 @@ def main() -> None:
     parser.add_argument("--tag", default="", help="suffix for the run dir, e.g. px256")
     parser.add_argument("--model", help="HF id or a local checkpoint dir, e.g. an AWQ-quantized model")
     parser.add_argument(
-        "--backend", choices=["hf", "vllm"], help="vllm: for checkpoints that need its 4-bit kernels"
+        "--backend",
+        choices=["hf", "vllm", "llamacpp"],
+        help="engine: transformers, vLLM (AWQ W4A16) or llama.cpp (GGUF)",
     )
+    parser.add_argument("--mmproj", help="llama.cpp: the vision projector GGUF")
+    parser.add_argument("--llama-server", help="llama.cpp: path to the llama-server binary")
     parser.add_argument("--variant")
     parser.add_argument("--split")
     parser.add_argument("--limit", type=int)
+    parser.add_argument("--offset", type=int, help="start at this receipt, to separate position from content")
     parser.add_argument("--max-pixels", type=int)
     parser.add_argument("--max-new-tokens", type=int)
+    parser.add_argument("--max-model-len", type=int, help="context size (vLLM --max-model-len, llama.cpp -c)")
     parser.add_argument("--repetition-penalty", type=float)
     parser.add_argument("--precision")
     parser.add_argument("--adapter")
@@ -63,7 +73,8 @@ def main() -> None:
         run_dir = Path("outputs/runs") / f"{time.strftime('%Y%m%d-%H%M')}_{cfg.variant}_{cfg.split}{tag}"
         config.save(cfg, run_dir / "config.yaml")
 
-    examples = [e for e in load_examples(cfg.examples_path) if e.split == cfg.split][: cfg.limit]
+    in_split = [e for e in load_examples(cfg.examples_path) if e.split == cfg.split][cfg.offset :]
+    examples = in_split[: cfg.limit]
     pred_path = run_dir / "predictions.jsonl"
     done = report.load_predictions(pred_path)
     todo = [e for e in examples if e.example_id not in done]

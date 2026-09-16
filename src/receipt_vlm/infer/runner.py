@@ -31,12 +31,23 @@ class InferConfig(BaseModel):
     # Qwen's generation_config sets 1.05, which pushes the model away from repeating "1", "0", ".000" ...
     repetition_penalty: float = 1.0
     batch_size: int = 1
+    offset: int = 0  # skip this many receipts: lets a run start at a chosen receipt, not always the first
     limit: int | None = None
     attn_implementation: str = "sdpa"
-    backend: Literal["hf", "vllm"] = "hf"  # vllm: checkpoints that need its 4-bit kernels (AWQ W4A16)
+    # vllm: checkpoints needing its 4-bit kernels (AWQ W4A16). llamacpp: GGUF via llama-server.
+    backend: Literal["hf", "vllm", "llamacpp"] = "hf"
     # vLLM only: it reserves this share of GPU memory up front, and caps prompt + answer length
     gpu_memory_utilization: float = 0.8
     max_model_len: int = 4096
+    # llama.cpp only: the vision projector, the server binary, and the same image cap in tokens
+    # (Qwen2.5-VL packs 28x28 pixels per token, so 1024*28*28 pixels = 1024 image tokens)
+    mmproj: str | None = None
+    llama_server: str = "/home/mazen/llama.cpp/build-cuda/bin/llama-server"
+    image_max_tokens: int = 1024
+    n_gpu_layers: int = 99
+    server_port: int = 8081
+    server_startup_s: float = 300.0
+    request_timeout_s: float = 600.0
 
 
 def image_kwargs(min_pixels: int, max_pixels: int) -> dict[str, Any]:
