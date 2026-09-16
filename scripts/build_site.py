@@ -173,6 +173,20 @@ def build_demo(manifest: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def counts_for(run: str, example_id: str) -> dict[str, Any]:
+    """The tp / fp / fn behind one receipt's score, so the tour can show the arithmetic."""
+    score = by_id(ROOT / "outputs/runs" / run / "scores.jsonl")[example_id]
+    return {
+        group: {
+            "tp": score[group]["tp"],
+            "fp": score[group]["fp"],
+            "fn": score[group]["fn"],
+            "f1": round(receipt_f1(score[group]), 3),
+        }
+        for group in ("overall", "numeric", "text")
+    } | {"ted": round(score.get("ted_accuracy") or 0.0, 3), "exact": bool(score["exact_match"])}
+
+
 def build_story(manifest: dict[str, Any], example_id: str) -> dict[str, Any]:
     """One receipt followed through every stage, for the tour.
 
@@ -198,6 +212,7 @@ def build_story(manifest: dict[str, Any], example_id: str) -> dict[str, Any]:
         }
 
     reference = preds["ft"]["raw_output"]
+    runs_by_key = {v["key"]: Path(v["run"]).name for v in VARIANTS}
     return {
         "example_id": example_id,
         "width": entry["width"],
@@ -205,6 +220,13 @@ def build_story(manifest: dict[str, Any], example_id: str) -> dict[str, Any]:
         "prompt_tokens": preds["ft"]["prompt_tokens"],
         "n_gold_fields": len(flatten(entry["gold"])),
         "instruction": INSTRUCTION,
+        # The schema as it actually appears in the labels, from the data report. Scraping key names out
+        # of the instruction's prose with a regex produced 27 flat names for a schema that has 29 nested
+        # paths - plausible-looking and wrong.
+        "key_paths": stats_summary()["splits"]["train"]["key_paths"],
+        "gold": entry["gold"],
+        "counts": {key: counts_for(run, example_id) for key, run in runs_by_key.items()},
+        "panels": {v["key"]: panel(v["key"]) | {"label": v["label"], "note": v["note"]} for v in VARIANTS},
         "base": panel("base"),
         "ft": panel("ft"),
         "variants": [
@@ -252,6 +274,11 @@ QUANT_ROWS = [
     ("AWQ W4A16 on vLLM", "20260915-2353_awq-w4a16-vllm_test_final", True),
     ("GGUF Q4_K_M on llama.cpp", "20260916-0516_ft-r16-gguf-q4_k_m_test_final", False),
 ]
+
+
+def stats_summary() -> dict[str, Any]:
+    """The data report: split distributions, the schema's key paths, and the leakage check."""
+    return json.loads((ROOT / "outputs/runs/20260915-0054_cord-v2_all/summary.json").read_text())
 
 
 def summary_of(run: str) -> dict[str, Any]:
@@ -308,7 +335,86 @@ def build_grid(demo: dict[str, Any]) -> dict[str, Any]:
             }
         )
 
-    return {"quick": quick, "ablations": ablations, "quant": quant}
+    stats = stats_summary()
+
+    # What the chosen training run cost, and every knob it was given.
+    train_dir = ROOT / "outputs/runs/20260915-1155_qlora-r16-lm-lr4e4_train"
+    train_summary = json.loads((train_dir / "train_summary.json").read_text())
+    hyper = [
+        line.split(": ", 1) for line in (train_dir / "config.yaml").read_text().splitlines() if ": " in line
+    ]
+
+    metrics_table = []
+    for label, run in (
+        ("Base model, zero-shot", "20260915-2200_base-bf16_test_final"),
+        ("Fine-tuned (deployed)", "20260915-2231_qlora-r16-lm-lr4e4_test_final"),
+    ):
+        metrics = summary_of(run)["metrics"]
+        metrics_table.append({"label": label, **{key: metrics[key]["value"] for key in metrics}})
+
+    return {
+        "quick": quick,
+        "ablations": ablations,
+        "quant": quant,
+        "splits": [
+            {
+                "split": name,
+                "receipts": block["receipts"],
+                "fields": block["fields"],
+                "numeric_share": block["numeric_share"],
+                "fields_p50": block["fields_per_receipt"]["p50"],
+                "fields_max": block["fields_per_receipt"]["max"],
+                "width_p50": block["width"]["p50"],
+                "height_p50": block["height"]["p50"],
+                "mp_p95": block["megapixels"]["p95"],
+            }
+            for name, block in stats["splits"].items()
+        ],
+        # The real shape, checked against the file rather than assumed: an earlier version guessed
+        # three key names that do not exist and, guarded by `if key in stats`, shipped an empty
+        # section without failing.
+        "leakage": {
+            "hash_bits": stats["leakage"]["hash_bits"],
+            "max_distance": stats["leakage"]["max_distance"],
+            "cross_split_exact": stats["leakage"]["cross_split_exact"],
+            "cross_split_pairs": stats["leakage"]["cross_split_pairs_within_max_distance"],
+            "within_split_exact": stats["leakage"]["exact_duplicates_within_a_split"],
+            "before": stats["leakage"]["receipts_before_exclusion"],
+            "nearest": stats["leakage"]["nearest_other_split_distance"],
+            "excluded": stats["leakage"]["excluded"],
+        },
+        "key_paths": stats["splits"]["train"]["key_paths"],
+        "target_tokens": {name: block["target_tokens"] for name, block in stats["splits"].items()},
+        "train": {
+            "seconds": train_summary["train_seconds"],
+            "loss": train_summary["train_loss"],
+            "peak_vram_mb": train_summary["train_peak_vram_mb"],
+            "trainable_params": train_summary["trainable_params"],
+            "hyper": hyper,
+        },
+        "metrics_table": metrics_table,
+        "tree": repo_map(),
+    }
+
+
+def repo_map() -> list[dict[str, Any]]:
+    """Every package with its file and line counts, generated from the tree rather than typed."""
+    parts = [
+        ("src/receipt_vlm/data", "CORD → normalized examples, splits, the leakage check"),
+        ("src/receipt_vlm/eval", "field F1, TED, bootstrap intervals, paired comparisons"),
+        ("src/receipt_vlm/infer", "transformers, vLLM and llama.cpp behind one interface"),
+        ("src/receipt_vlm/train", "the QLoRA trainer and the ablation sweep"),
+        ("src/receipt_vlm/quant", "adapter merge and the AWQ recipe"),
+        ("src/receipt_vlm/serve", "the HTTP endpoint and the Gradio demo"),
+        ("scripts", "thin command-line entry points"),
+        ("tests", "CPU-only tests on a three-receipt fixture"),
+    ]
+    out = []
+    for path, what in parts:
+        files = sorted((ROOT / path).rglob("*.py"))
+        lines = sum(len(f.read_text().splitlines()) for f in files)
+        out.append({"path": path, "what": what, "files": len(files), "lines": lines})
+    return out
 
 
 def inject(template: Path, out: Path, placeholder: str, payload: Any) -> None:

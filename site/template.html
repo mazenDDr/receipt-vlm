@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>One receipt, start to finish · receipt-vlm</title>
-<meta name="description" content="A single held-out receipt followed through the whole system: the photograph, the prompt, what the base model returned, what the fine-tuned model returned, how it was scored, and what the 4-bit build does with it.">
+<meta name="description" content="A single held-out receipt followed through the whole system: the photograph, the prompt, what the base model returned, what fine-tuning changed, how it is scored field by field, and what quantizing to 4 bits does to it.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600&display=swap">
@@ -38,61 +38,114 @@
   --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 26px rgba(0,0,0,.35);
 }
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;scroll-padding-top:70px}
-body{margin:0;background:var(--bed);color:var(--ink);font:400 16px/1.65 var(--sans);-webkit-font-smoothing:antialiased}
-.wrap{max-width:1120px;margin:0 auto;padding-inline:20px}
+html{scroll-behavior:smooth;scroll-padding-top:120px}
+body{margin:0;background:var(--bed);color:var(--ink);font:400 16px/1.68 var(--sans);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:20px}
 @media (max-width:520px){.wrap{padding-inline:16px}}
 a{color:var(--acc);text-underline-offset:3px}
 h1,h2,h3{font-family:var(--display);letter-spacing:-.015em;text-wrap:balance;margin:0}
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:4px}
 [hidden]{display:none!important}
+code{font:500 .86em var(--mono);background:var(--sheet-2);border:1px solid var(--line-soft);border-radius:4px;padding:1px 5px;overflow-wrap:anywhere}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
 
-.nav{position:sticky;top:0;z-index:20;background:var(--bed);border-bottom:1px solid var(--line)}
+.nav{position:sticky;top:0;z-index:30;background:var(--bed);border-bottom:1px solid var(--line)}
 .nav .wrap{display:flex;align-items:center;gap:16px;height:56px}
 .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--ink);font:600 17px/1 var(--display)}
 .brand b{background:var(--ink);color:var(--bed);width:24px;height:24px;border-radius:5px;display:grid;place-items:center;font:600 12px/1 var(--mono)}
 .nav ul{display:flex;gap:2px;list-style:none;margin:0 0 0 auto;padding:0}
 .nav a.nl{font:500 14px/1 var(--sans);color:var(--ink-2);text-decoration:none;padding:8px 10px;border-radius:7px}
 .nav a.nl:hover{background:var(--sheet);color:var(--ink)}
+@media (max-width:700px){.nav li.opt{display:none}}
 .icon-btn{border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:8px;width:34px;height:34px;display:grid;place-items:center;cursor:pointer;flex:none}
 
-header.head{padding-block:44px 26px}
-header.head h1{font-size:clamp(32px,5vw,52px);line-height:1.02;max-width:16ch}
-.lede{margin:.8rem 0 0;max-width:64ch;color:var(--ink-2);font-size:17px}
+/* The progress rail: a real sequence, so it is numbered. */
+.rail{position:sticky;top:56px;z-index:25;background:var(--bed);border-bottom:1px solid var(--line)}
+.rail .wrap{display:flex;gap:4px;overflow-x:auto;padding-block:9px;scrollbar-width:none}
+.rail .wrap::-webkit-scrollbar{display:none}
+.rail a{flex:none;display:flex;align-items:center;gap:7px;text-decoration:none;color:var(--ink-3);
+  font:500 12.5px/1 var(--sans);padding:7px 11px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
+.rail a:hover{background:var(--sheet);color:var(--ink)}
+.rail a[aria-current="true"]{background:var(--sheet);border-color:var(--acc);color:var(--acc)}
+.rail a i{font:600 10px/1 var(--mono);font-style:normal;opacity:.75}
+
+header.head{padding-block:44px 8px}
+header.head h1{font-size:clamp(32px,5vw,54px);line-height:1.02;max-width:16ch}
+.lede{margin:.85rem 0 0;max-width:64ch;color:var(--ink-2);font-size:17.5px}
 .label{font:500 11px/1 var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
 
-/* The rail: each step is a real stage, numbered because the order carries information. */
-.step{display:grid;grid-template-columns:52px minmax(0,1fr);gap:20px;padding-block:26px;border-top:1px solid var(--line)}
-@media (max-width:640px){.step{grid-template-columns:1fr;gap:10px}}
-.step .n{font:600 13px/1 var(--mono);color:var(--acc);padding-top:5px;letter-spacing:.06em}
-.step h2{font-size:23px;margin-bottom:.35rem}
-.step p{margin:.4rem 0 0;max-width:62ch;color:var(--ink-2)}
-.panel{background:var(--sheet);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-top:14px;box-shadow:var(--shadow)}
-.panel.bad{border-color:var(--bad)}
-.panel.ok{border-color:var(--ok)}
-.panel h3{font-size:14px;margin-bottom:8px;display:flex;align-items:center;gap:9px}
-.pill{font:500 10.5px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;border-radius:999px;background:var(--sheet-2);color:var(--ink-3)}
-.pill.bad{background:var(--bad-soft);color:var(--bad)}
-.pill.ok{background:var(--ok-soft);color:var(--ok)}
+/* Layout: the receipt stays beside the reader the whole way down. */
+.stage{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:34px;align-items:start;padding-block:18px 40px}
+@media (max-width:900px){.stage{grid-template-columns:1fr;gap:18px}}
+.plate{position:sticky;top:118px}
+@media (max-width:900px){.plate{position:static}}
+.plate img{width:100%;border:1px solid var(--line);border-radius:9px;display:block;background:var(--sheet-2)}
+.plate .cap{margin-top:9px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline}
+.plate .rid{font:600 13px var(--mono)}
+.plate .dim{color:var(--ink-3);font-size:12.5px}
+.facts{display:grid;gap:6px;margin-top:12px}
+.fact{display:flex;justify-content:space-between;gap:10px;background:var(--sheet);border:1px solid var(--line);
+  border-radius:8px;padding:7px 11px;font-size:12.8px}
+.fact span{color:var(--ink-3)}
+.fact b{font:600 12.8px var(--mono);font-variant-numeric:tabular-nums}
+
+section.step{border-top:1px solid var(--line);padding-block:30px}
+section.step:first-child{border-top:0}
+section.step .kicker{display:flex;align-items:center;gap:10px;margin-bottom:.45rem}
+section.step .kicker i{font:600 11px/1 var(--mono);font-style:normal;color:var(--acc);letter-spacing:.08em}
+section.step h2{font-size:25px}
+section.step p{margin:.55rem 0 0;max-width:66ch;color:var(--ink-2)}
+
+.panel{background:var(--sheet);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-top:16px;box-shadow:var(--shadow)}
+.panel.bad{border-color:var(--bad)} .panel.ok{border-color:var(--ok)}
+.panel h3{font-size:13.5px;margin-bottom:9px;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.pill{font:500 10.5px/1 var(--mono);letter-spacing:.05em;text-transform:uppercase;padding:4px 8px;border-radius:999px;background:var(--sheet-2);color:var(--ink-3)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.ok{background:var(--ok-soft);color:var(--ok)}
 .pill.acc{background:var(--acc-soft);color:var(--acc)}
-pre{margin:0;font:400 12.2px/1.62 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink)}
-pre .k{color:var(--acc)} pre .r{color:var(--bad)} pre .g{color:var(--ok)} pre .d{color:var(--ink-3)}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-@media (max-width:820px){.two{grid-template-columns:1fr}}
-.shot{max-width:320px}
-.shot img{width:100%;border:1px solid var(--line);border-radius:8px;display:block;background:var(--sheet-2)}
-.stats{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-.stat{background:var(--sheet);border:1px solid var(--line);border-radius:8px;padding:8px 12px;min-width:104px}
-.stat b{display:block;font:600 16px/1.25 var(--mono);font-variant-numeric:tabular-nums}
-.stat span{font:500 10px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
-table.cmp{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:10px}
-table.cmp th{text-align:left;font:500 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);padding:6px 8px;border-bottom:1px solid var(--line)}
-table.cmp td{padding:6px 8px;border-bottom:1px solid var(--line-soft);font-variant-numeric:tabular-nums}
-table.cmp td.k{font:500 12px var(--mono);color:var(--ink-2)}
-table.cmp td.v{font:400 12.5px var(--mono);overflow-wrap:anywhere}
-.callout{border-left:3px solid var(--acc);background:var(--sheet);padding:12px 16px;border-radius:0 9px 9px 0;margin-top:16px}
-footer{border-top:1px solid var(--line);padding-block:24px 44px;color:var(--ink-3);font-size:13.5px;margin-top:20px}
+pre{margin:0;font:400 12.2px/1.62 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink);max-height:340px;overflow-y:auto}
+pre.r{color:var(--bad)} pre.g{color:var(--ok)}
+
+/* The prompt, broken out rather than left as a blob. */
+.prompt{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,220px);gap:14px}
+@media (max-width:760px){.prompt{grid-template-columns:1fr}}
+.keys{display:flex;flex-wrap:wrap;gap:4px;align-content:flex-start}
+.keys code{font-size:11px;padding:2px 5px}
+
+/* Token contrast drawn, not described. */
+.bars{display:grid;gap:9px;margin-top:14px}
+.bar{display:grid;grid-template-columns:132px minmax(0,1fr) 92px;gap:10px;align-items:center}
+.bar .who{font:500 12.5px var(--sans);color:var(--ink-2)}
+.bar .track{background:var(--sheet-2);border:1px solid var(--line-soft);border-radius:999px;height:20px;overflow:hidden}
+.bar .fill{height:100%;border-radius:999px;transition:width .6s ease}
+.bar .val{font:600 12.5px var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+@media (max-width:640px){.bar{grid-template-columns:96px minmax(0,1fr) 78px}}
+
+/* Variant switcher. */
+.switch{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px}
+.switch button{font:500 12.5px var(--sans);padding:7px 12px;border:1px solid var(--line);background:var(--sheet);
+  color:var(--ink-2);border-radius:8px;cursor:pointer}
+.switch button[aria-pressed="true"]{background:var(--acc-soft);border-color:var(--acc);color:var(--acc)}
+
+table.rows{width:100%;border-collapse:collapse;font-size:13.2px;margin-top:12px}
+table.rows th{text-align:left;font:500 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-3);padding:6px 8px;border-bottom:1px solid var(--line)}
+table.rows td{padding:6px 8px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+table.rows td.k{font:500 12px var(--mono);color:var(--ink-2);white-space:nowrap}
+table.rows td.v{font:400 12.4px var(--mono);overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto}
+
+/* The scoring arithmetic, shown. */
+.sums{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:14px}
+.sum{background:var(--sheet);border:1px solid var(--line);border-radius:10px;padding:13px 15px}
+.sum h4{margin:0 0 8px;font:600 12px var(--display);color:var(--ink-2)}
+.sum .tri{display:flex;gap:14px;font:600 14px var(--mono);font-variant-numeric:tabular-nums}
+.sum .tri i{font-style:normal;display:block;font:500 9.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.sum .frac{margin-top:10px;font:500 12.5px var(--mono);color:var(--ink-2);overflow-wrap:anywhere}
+.sum .out{margin-top:6px;font:600 20px var(--mono);font-variant-numeric:tabular-nums}
+.tp{color:var(--ok)} .fp{color:var(--bad)} .fn{color:var(--warn)}
+
+.callout{border-left:3px solid var(--acc);background:var(--sheet);padding:13px 16px;border-radius:0 9px 9px 0;margin-top:18px;max-width:72ch}
+footer{border-top:1px solid var(--line);padding-block:26px 46px;color:var(--ink-3);font-size:13.5px}
 </style>
 </head>
 <body>
@@ -100,33 +153,52 @@ footer{border-top:1px solid var(--line);padding-block:24px 44px;color:var(--ink-
 <nav class="nav"><div class="wrap">
   <a class="brand" href="../"><b>R</b> receipt-vlm</a>
   <ul>
-    <li><a class="nl" href="../">Field guide</a></li>
+    <li class="opt"><a class="nl" href="../">Field guide</a></li>
     <li><a class="nl" href="../demo/">Recorded extractions</a></li>
     <li><a class="nl" href="https://github.com/mazenDDr/receipt-vlm">GitHub</a></li>
   </ul>
   <button class="icon-btn" id="theme" type="button" aria-label="Switch theme">◐</button>
 </div></nav>
 
+<div class="rail"><div class="wrap" id="rail"></div></div>
+
 <div class="wrap">
   <header class="head">
     <p class="label">The tour</p>
-    <h1 id="t-title">One receipt, start to finish</h1>
+    <h1>One receipt, all the way through</h1>
     <p class="lede" id="t-lede"></p>
   </header>
 </div>
 
-<div class="wrap" id="steps"></div>
+<div class="wrap">
+  <div class="stage">
+    <figure class="plate" style="margin:0">
+      <img id="shot" alt="">
+      <figcaption>
+        <div class="cap">
+          <span class="rid" id="rid"></span>
+          <span class="dim" id="dim"></span>
+        </div>
+        <div class="facts" id="facts"></div>
+      </figcaption>
+    </figure>
+    <div id="steps"></div>
+  </div>
+</div>
 
 <footer><div class="wrap">
   Receipt from <a href="https://huggingface.co/datasets/naver-clova-ix/cord-v2">CORD v2</a>
-  (Park et al., 2019), CC BY 4.0. Every figure on this page is read from the committed runs.
-  <a href="https://github.com/mazenDDr/receipt-vlm">Source</a>.
+  (Park et al., 2019), CC BY 4.0. Every figure on this page is read from the committed runs —
+  nothing is typed in by hand. <a href="https://github.com/mazenDDr/receipt-vlm">Source</a>.
 </div></footer>
 
 <script>
 const STORY = /*__STORY__*/null;
 (function () {
   const $ = (id) => document.getElementById(id);
+  const S = STORY;
+  const esc = (s) => String(s).replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]));
+
   try {
     const saved = localStorage.getItem("rv-theme");
     if (saved) document.documentElement.dataset.theme = saved;
@@ -137,95 +209,180 @@ const STORY = /*__STORY__*/null;
     try { localStorage.setItem("rv-theme", now); } catch (e) { /* ignore */ }
   });
 
-  const esc = (s) => String(s).replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]));
-  const S = STORY;
-
+  // ---- the receipt, held beside the reader all the way down -------------------------------------
+  $("shot").src = "../receipts/" + S.example_id + ".jpg";
+  $("shot").alt = "Receipt " + S.example_id;
+  $("rid").textContent = S.example_id;
+  $("dim").textContent = S.width + "×" + S.height + " px";
   $("t-lede").textContent =
     `Receipt ${S.example_id} from the held-out test split, followed through every stage exactly as it `
-    + `was scored. Nothing here is illustrative: these are the recorded outputs.`;
+    + `was scored. Nothing here is illustrative: these are the recorded outputs, and the arithmetic `
+    + `below is the arithmetic that produced the numbers in the README.`;
 
-  const stat = (b, s, color) =>
-    `<div class="stat"><b${color ? ` style="color:${color}"` : ""}>${b}</b><span>${s}</span></div>`;
+  const fact = (k, v) => `<div class="fact"><span>${k}</span><b>${v}</b></div>`;
+  $("facts").innerHTML =
+    fact("fields in the label", S.n_gold_fields) +
+    fact("image tokens", S.prompt_tokens) +
+    fact("items on the receipt", (S.gold.menu || []).length) +
+    fact("base model F1", S.counts.base.overall.f1.toFixed(2)) +
+    fact("fine-tuned F1", S.counts.ft.overall.f1.toFixed(2));
 
-  const rowsTable = (rows) => `<div style="overflow-x:auto"><table class="cmp">
+  // ---- steps ------------------------------------------------------------------------------------
+  const maxTokens = Math.max(...Object.values(S.panels).map((p) => p.tokens));
+  const bar = (who, value, max, colour, suffix) => {
+    const pct = Math.max(2, (value / max) * 100);
+    return `<div class="bar"><span class="who">${who}</span>`
+      + `<span class="track"><span class="fill" style="width:${pct}%;background:${colour}"></span></span>`
+      + `<span class="val">${value}${suffix || ""}</span></div>`;
+  };
+
+  // The schema from the data report, not scraped out of the instruction's prose.
+  const keyList = S.key_paths.map((k) => `<code>${esc(k)}</code>`).join("");
+
+  const rowsTable = (rows) => `<div class="scroll"><table class="rows">
     <thead><tr><th>Key path</th><th>CORD label</th><th>Model</th></tr></thead><tbody>` +
     rows.map((r) => {
       const colour = r.agrees ? "var(--ok)" : (r.agrees_lenient ? "var(--warn)" : "var(--bad)");
       const pred = r.pred.length ? esc(r.pred.join(" · ")) : "not present";
-      return `<tr><td class="k">${esc(r.path)}</td><td class="v">${esc(r.gold.join(" · ")) || "—"}</td>` +
-        `<td class="v" style="color:${colour}">${pred}</td></tr>`;
+      return `<tr><td class="k">${esc(r.path)}</td><td class="v">${esc(r.gold.join(" · ")) || "—"}</td>`
+        + `<td class="v" style="color:${colour}">${pred}</td></tr>`;
     }).join("") + "</tbody></table></div>";
+
+  const sumCard = (title, c) => {
+    const { tp, fp, fn } = c;
+    return `<div class="sum"><h4>${title}</h4>
+      <div class="tri">
+        <span class="tp">${tp}<i>true pos</i></span>
+        <span class="fp">${fp}<i>false pos</i></span>
+        <span class="fn">${fn}<i>false neg</i></span>
+      </div>
+      <div class="frac">2·${tp} / (2·${tp} + ${fp} + ${fn})</div>
+      <div class="out" style="color:${c.f1 >= 0.9 ? "var(--ok)" : "var(--bad)"}">${c.f1.toFixed(3)}</div>
+    </div>`;
+  };
 
   const steps = [
     {
-      n: "01",
-      h: "The photograph",
-      p: "A 900-pixel-wide photograph of a real till receipt. The model sees this and nothing else: no "
-        + "OCR text, no layout boxes, no hints about which shop it came from.",
-      html: `<div class="shot"><img src="../receipts/${S.example_id}.jpg" alt="Receipt ${S.example_id}"></div>`
-        + `<div class="stats">${stat(S.width + "×" + S.height, "pixels")}`
-        + `${stat(S.prompt_tokens, "prompt tokens")}${stat(S.n_gold_fields, "fields in the label")}</div>`,
+      id: "photo", n: "01", t: "The photograph",
+      p: `The model sees this and nothing else — no OCR text, no layout boxes, no hint about which shop `
+        + `it came from. At the configured cap it becomes ${S.prompt_tokens} image tokens, and the label `
+        + `it will be scored against holds ${S.n_gold_fields} fields across ${(S.gold.menu || []).length} items.`,
+      html: `<div class="panel"><h3>The label this will be scored against <span class="pill">gt_parse</span></h3>`
+        + `<pre>${esc(JSON.stringify(S.gold, null, 1))}</pre></div>`,
     },
     {
-      n: "02",
-      h: "The prompt",
-      p: "One instruction, identical for every receipt and every variant. It names each CORD key and "
-        + "asks for the ones that are actually printed — nothing about formatting, which turns out to "
-        + "be where a third of the remaining error lives.",
-      html: `<div class="panel"><h3>Sent with the image <span class="pill acc">unchanged across all variants</span></h3>`
-        + `<pre class="d">${esc(S.instruction)}</pre></div>`,
+      id: "prompt", n: "02", t: "The prompt",
+      p: `One instruction, identical for every receipt and every variant. It names each CORD key and asks `
+        + `for only the ones actually printed. Notice what it does not say: nothing about separators, `
+        + `nothing about keeping units with counts — which is where a third of the remaining error lives.`,
+      html: `<div class="panel"><div class="prompt">`
+        + `<div><h3>Sent with the image <span class="pill acc">unchanged across all variants</span></h3>`
+        + `<pre>${esc(S.instruction)}</pre></div>`
+        + `<div><h3>The schema <span class="pill">${S.key_paths.length} key paths</span></h3>`
+        + `<div class="keys">${keyList}</div></div>`
+        + `</div></div>`,
     },
     {
-      n: "03",
-      h: "What the base model returned",
-      p: "Qwen2.5-VL-3B with no fine-tuning. It knows the schema — every key is there — but it fills "
-        + "the blanks it cannot find, nests each item inside the one before it, and invents a total.",
-      html: `<div class="panel bad"><h3>Base model <span class="pill bad">field F1 ${S.base.f1.toFixed(2)}</span>`
-        + `<span class="pill">${S.base.tokens} tokens</span><span class="pill">${S.base.latency.toFixed(1)} s</span></h3>`
-        + `<pre class="r">${esc(S.base.raw.slice(0, 900))}${S.base.raw.length > 900 ? "\n…" : ""}</pre></div>`,
+      id: "before", n: "03", t: "What the base model returns",
+      p: `Qwen2.5-VL-3B with no fine-tuning. It knows the schema — every key is present — but it fills `
+        + `the blanks it cannot find, nests each item inside the one before it four levels deep, files the `
+        + `cash paid as tax, and invents a total. ${S.base.raw.length} characters of it.`,
+      html: `<div class="panel bad"><h3>Base model`
+        + `<span class="pill bad">field F1 ${S.counts.base.overall.f1.toFixed(2)}</span>`
+        + `<span class="pill">${S.panels.base.tokens} tokens</span>`
+        + `<span class="pill">${S.panels.base.latency.toFixed(1)} s</span></h3>`
+        + `<pre class="r">${esc(S.base.raw)}</pre></div>`,
     },
     {
-      n: "04",
-      h: "What the fine-tuned model returns",
-      p: "The same image and the same prompt, after QLoRA fine-tuning on 773 receipts. It writes only "
-        + "the fields that are on the paper, keeps the count in its own key, and stops.",
-      html: `<div class="panel ok"><h3>Fine-tuned <span class="pill ok">field F1 ${S.ft.f1.toFixed(2)}</span>`
-        + `<span class="pill">${S.ft.tokens} tokens</span><span class="pill">${S.ft.latency.toFixed(1)} s</span></h3>`
-        + `<pre class="g">${esc(S.ft.raw)}</pre></div>`,
+      id: "after", n: "04", t: "What fine-tuning changed",
+      p: `Same image, same prompt, after QLoRA on 773 receipts. It writes only the fields on the paper, `
+        + `keeps the count in its own key, and stops. Four times shorter, and every field correct.`,
+      html: `<div class="panel ok"><h3>Fine-tuned`
+        + `<span class="pill ok">field F1 ${S.counts.ft.overall.f1.toFixed(2)}</span>`
+        + `<span class="pill">${S.panels.ft.tokens} tokens</span>`
+        + `<span class="pill">${S.panels.ft.latency.toFixed(1)} s</span></h3>`
+        + `<pre class="g">${esc(S.ft.raw)}</pre></div>`
+        + `<div class="bars">`
+        + bar("Base model", S.panels.base.tokens, maxTokens, "var(--bad)", " tokens")
+        + bar("Fine-tuned", S.panels.ft.tokens, maxTokens, "var(--ok)", " tokens")
+        + `</div>`,
     },
     {
-      n: "05",
-      h: "How it is scored",
-      p: "Both outputs are flattened into (key path, value) pairs and compared with the labels as "
-        + "strings — Donut's rule, because digits are the point. Green agrees, amber differs only in "
-        + "separators, red is a real difference.",
-      html: rowsTable(S.ft.rows),
+      id: "score", n: "05", t: "How it is scored",
+      p: `Both outputs are flattened into (key path, value) pairs and compared with the label as strings — `
+        + `Donut's rule, because digits are the point. Every pair the model gets right is a true positive, `
+        + `every pair it invents a false positive, every pair it misses a false negative. That is the whole `
+        + `metric, and here it is on this receipt.`,
+      html: `<div class="sums">${sumCard("Base model", S.counts.base.overall)}`
+        + `${sumCard("Fine-tuned", S.counts.ft.overall)}</div>`
+        + `<p style="margin-top:14px">Row by row, for the fine-tuned model. Green agrees, amber differs `
+        + `only in separators, red is a real difference.</p>`
+        + rowsTable(S.ft.rows)
+        + `<div class="callout">Tree-edit accuracy, which also counts item order, moves the same way: `
+        + `${S.counts.base.ted.toFixed(3)} → ${S.counts.ft.ted.toFixed(3)}. `
+        + `The base model's ${S.base.rows.length} key paths against the fine-tune's ${S.ft.rows.length} `
+        + `are mostly keys the receipt never had.</div>`,
     },
     {
-      n: "06",
-      h: "And then it is quantized",
-      p: "The adapter is merged into bf16 and quantized two ways. On this receipt both 4-bit builds "
-        + "return the identical output — the same tokens, byte for byte — an order of magnitude faster.",
-      html: `<div style="overflow-x:auto"><table class="cmp"><thead><tr><th>Build</th><th>Field F1</th>`
-        + `<th>Tokens</th><th>Latency</th><th>Same output as the fine-tune?</th></tr></thead><tbody>`
-        + S.variants.map((v) => `<tr><td class="k">${esc(v.label)}</td><td>${v.f1.toFixed(3)}</td>`
-          + `<td>${v.tokens}</td><td>${v.latency.toFixed(2)} s</td>`
-          + `<td style="color:${v.identical ? "var(--ok)" : "var(--ink-3)"}">`
-          + `${v.identical ? "identical" : "differs"}</td></tr>`).join("")
-        + "</tbody></table></div>"
+      id: "quantize", n: "06", t: "And then it is quantized",
+      p: `The adapter is merged into bf16 and quantized two ways. Switch between them: on this receipt `
+        + `both 4-bit builds return the identical output — same tokens, byte for byte — an order of `
+        + `magnitude faster.`,
+      html: `<div class="switch" id="switch"></div><div id="variant-panel"></div>`
+        + `<div class="bars" style="margin-top:16px">`
+        + Object.values(S.panels).map((p) =>
+            bar(p.label, p.latency, Math.max(...Object.values(S.panels).map((q) => q.latency)),
+                p.label === "Base model" ? "var(--bad)" : "var(--acc)", " s")).join("")
+        + `</div>`
         + `<div class="callout">Across the whole test split the picture holds: AWQ differs from its bf16 `
         + `source by −0.005 [−0.026, +0.013] and GGUF Q4_K_M from its own reference by −0.014 `
         + `[−0.038, +0.009]. Neither difference is real. `
-        + `<a href="../#quantize">Why that is, in the field guide.</a></div>`,
+        + `<a href="../#quantize">Why, in the field guide.</a></div>`,
     },
   ];
 
   $("steps").innerHTML = steps.map((s) =>
-    `<section class="step" id="s${s.n}"><div class="n">${s.n}</div><div>`
-    + `<h2>${s.h}</h2><p>${s.p}</p>${s.html}</div></section>`).join("")
-    + `<section class="step"><div class="n">→</div><div><h2>Every other receipt</h2>`
+    `<section class="step" id="${s.id}"><div class="kicker"><i>${s.n}</i>`
+    + `<h2>${s.t}</h2></div><p>${s.p}</p>${s.html}</section>`).join("")
+    + `<section class="step"><div class="kicker"><i>→</i><h2>Every other receipt</h2></div>`
     + `<p>This was one of 100. The same view for all of them, filterable by what went wrong, is in the `
-    + `<a href="../demo/">recorded extractions</a>.</p></div></section>`;
+    + `<a href="../demo/">recorded extractions</a>.</p></section>`;
+
+  // ---- the variant switcher ---------------------------------------------------------------------
+  let shown = "ft";
+  function renderVariant() {
+    const order = ["base", "ft", "awq", "gguf"];
+    $("switch").innerHTML = order.map((k) =>
+      `<button type="button" data-k="${k}" aria-pressed="${k === shown}">${esc(S.panels[k].label)}</button>`
+    ).join("");
+    $("switch").querySelectorAll("button").forEach((b) =>
+      b.addEventListener("click", () => { shown = b.dataset.k; renderVariant(); }));
+    const p = S.panels[shown];
+    const c = S.counts[shown].overall;
+    const identical = shown !== "base" && p.raw === S.panels.ft.raw;
+    $("variant-panel").innerHTML =
+      `<div class="panel ${c.f1 >= 0.9 ? "ok" : "bad"}"><h3>${esc(p.label)}`
+      + `<span class="pill ${c.f1 >= 0.9 ? "ok" : "bad"}">field F1 ${c.f1.toFixed(3)}</span>`
+      + `<span class="pill">${p.tokens} tokens</span>`
+      + `<span class="pill">${p.latency.toFixed(2)} s</span>`
+      + (identical ? `<span class="pill acc">byte-identical to the fine-tune</span>` : "")
+      + `</h3><pre class="${c.f1 >= 0.9 ? "g" : "r"}">${esc(p.raw)}</pre>`
+      + `<p style="font-size:13px;color:var(--ink-3);margin-top:10px">${esc(p.note)}</p></div>`;
+  }
+  renderVariant();
+
+  // ---- the progress rail ------------------------------------------------------------------------
+  $("rail").innerHTML = steps.map((s) =>
+    `<a href="#${s.id}" data-id="${s.id}"><i>${s.n}</i>${s.t}</a>`).join("");
+  const links = [...$("rail").querySelectorAll("a")];
+  const seen = new Map();
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => seen.set(e.target.id, e.intersectionRatio));
+    let best = null;
+    seen.forEach((ratio, id) => { if (ratio > 0 && (!best || ratio > seen.get(best))) best = id; });
+    links.forEach((a) => a.setAttribute("aria-current", String(a.dataset.id === best)));
+  }, { rootMargin: "-120px 0px -55% 0px", threshold: [0, 0.25, 0.5, 1] });
+  steps.forEach((s) => { const el = document.getElementById(s.id); if (el) io.observe(el); });
 })();
 </script>
 </body>

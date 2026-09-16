@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>receipt-vlm Field Guide</title>
-<meta name="description" content="Every part of receipt-vlm explained: how CORD receipts are split, how the model is fine-tuned with QLoRA, how it is quantized to 4 bits, what that costs, and where the remaining errors actually come from.">
+<meta name="description" content="Every part of receipt-vlm in detail: how the CORD split was checked for leakage, every training hyperparameter and what the run cost, how the model is scored, where quantization stops being free, the two bugs that faked findings, and what is still wrong.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600&display=swap">
@@ -38,54 +38,77 @@
   --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 26px rgba(0,0,0,.35);
 }
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;scroll-padding-top:70px}
-body{margin:0;background:var(--bed);color:var(--ink);font:400 16px/1.68 var(--sans);-webkit-font-smoothing:antialiased}
+html{scroll-behavior:smooth;scroll-padding-top:118px}
+body{margin:0;background:var(--bed);color:var(--ink);font:400 16px/1.7 var(--sans);-webkit-font-smoothing:antialiased}
 .wrap{max-width:1180px;margin:0 auto;padding-inline:20px}
 @media (max-width:520px){.wrap{padding-inline:16px}}
 a{color:var(--acc);text-underline-offset:3px}
-h1,h2,h3{font-family:var(--display);letter-spacing:-.015em;text-wrap:balance;margin:0}
+h1,h2,h3,h4{font-family:var(--display);letter-spacing:-.015em;text-wrap:balance;margin:0}
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:4px}
 [hidden]{display:none!important}
-code{font:500 .85em var(--mono);background:var(--sheet-2);border:1px solid var(--line-soft);border-radius:4px;padding:1px 5px;overflow-wrap:anywhere}
+code{font:500 .86em var(--mono);background:var(--sheet-2);border:1px solid var(--line-soft);border-radius:4px;padding:1px 5px;overflow-wrap:anywhere}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
 
-.nav{position:sticky;top:0;z-index:20;background:var(--bed);border-bottom:1px solid var(--line)}
+.nav{position:sticky;top:0;z-index:30;background:var(--bed);border-bottom:1px solid var(--line)}
 .nav .wrap{display:flex;align-items:center;gap:16px;height:56px}
 .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--ink);font:600 17px/1 var(--display)}
 .brand b{background:var(--ink);color:var(--bed);width:24px;height:24px;border-radius:5px;display:grid;place-items:center;font:600 12px/1 var(--mono)}
 .nav ul{display:flex;gap:2px;list-style:none;margin:0 0 0 auto;padding:0}
 .nav a.nl{font:500 14px/1 var(--sans);color:var(--ink-2);text-decoration:none;padding:8px 10px;border-radius:7px}
 .nav a.nl:hover{background:var(--sheet);color:var(--ink)}
-@media (max-width:760px){.nav li.opt{display:none}}
+@media (max-width:820px){.nav li.opt{display:none}}
 .icon-btn{border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:8px;width:34px;height:34px;display:grid;place-items:center;cursor:pointer;flex:none}
 
-header.head{padding-block:52px 22px}
-header.head h1{font-size:clamp(34px,5.4vw,58px);line-height:1.02;max-width:17ch}
-.lede{margin:.9rem 0 0;max-width:66ch;color:var(--ink-2);font-size:17.5px}
+.rail{position:sticky;top:56px;z-index:25;background:var(--bed);border-bottom:1px solid var(--line)}
+.rail .wrap{display:flex;gap:4px;overflow-x:auto;padding-block:9px;scrollbar-width:none}
+.rail .wrap::-webkit-scrollbar{display:none}
+.rail a{flex:none;display:flex;align-items:center;gap:7px;text-decoration:none;color:var(--ink-3);
+  font:500 12.5px/1 var(--sans);padding:7px 11px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
+.rail a:hover{background:var(--sheet);color:var(--ink)}
+.rail a[aria-current="true"]{background:var(--sheet);border-color:var(--acc);color:var(--acc)}
+.rail a i{font:600 10px/1 var(--mono);font-style:normal;opacity:.75}
+
+header.head{padding-block:50px 24px}
+header.head h1{font-size:clamp(33px,5.2vw,56px);line-height:1.03;max-width:18ch}
+.lede{margin:.95rem 0 0;max-width:68ch;color:var(--ink-2);font-size:17.5px}
 .label{font:500 11px/1 var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
-.quicks{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
-.quick{background:var(--sheet);border:1px solid var(--line);border-radius:9px;padding:10px 14px;min-width:150px}
-.quick b{display:block;font:600 20px/1.2 var(--mono);font-variant-numeric:tabular-nums}
+.quicks{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+.quick{background:var(--sheet);border:1px solid var(--line);border-radius:9px;padding:11px 15px;min-width:156px}
+.quick b{display:block;font:600 21px/1.2 var(--mono);font-variant-numeric:tabular-nums}
 .quick span{font:500 10.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
 
-section.stage{border-top:1px solid var(--line);padding-block:34px}
-section.stage h2{font-size:26px;margin-bottom:.4rem}
-section.stage .sub{color:var(--ink-3);font:500 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.8rem}
-section.stage p{margin:.5rem 0 0;max-width:66ch;color:var(--ink-2)}
-figure{margin:18px 0 0}
+section.stage{border-top:1px solid var(--line);padding-block:38px}
+section.stage .kicker{display:flex;align-items:center;gap:10px;margin-bottom:.5rem}
+section.stage .kicker i{font:600 11px/1 var(--mono);font-style:normal;color:var(--acc);letter-spacing:.08em}
+section.stage h2{font-size:27px}
+section.stage h3{font-size:17px;margin-top:1.7rem}
+section.stage p{margin:.6rem 0 0;max-width:68ch;color:var(--ink-2)}
+figure{margin:20px 0 0}
 figure img{width:100%;display:block;border-radius:10px;border:1px solid var(--line)}
-figcaption{margin-top:8px;color:var(--ink-3);font-size:13.5px;max-width:66ch}
-.files{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+figcaption{margin-top:9px;color:var(--ink-3);font-size:13.5px;max-width:68ch}
+.files{display:flex;flex-wrap:wrap;gap:6px;margin-top:15px}
 .file{font:500 11.5px var(--mono);background:var(--sheet);border:1px solid var(--line);border-radius:7px;padding:5px 9px;color:var(--ink-2)}
-.why{border-left:3px solid var(--acc);background:var(--sheet);padding:13px 16px;border-radius:0 9px 9px 0;margin-top:16px;max-width:72ch}
+.why{border-left:3px solid var(--acc);background:var(--sheet);padding:14px 17px;border-radius:0 9px 9px 0;margin-top:18px;max-width:74ch}
+.why.bad{border-left-color:var(--bad)}
+.why.warn{border-left-color:var(--warn)}
 .why b{font-family:var(--display)}
 table.grid{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:16px}
 table.grid th{text-align:left;font:500 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);padding:7px 9px;border-bottom:1px solid var(--line);white-space:nowrap}
 table.grid td{padding:7px 9px;border-bottom:1px solid var(--line-soft);font-variant-numeric:tabular-nums}
-table.grid td.k{font:500 12px var(--mono);color:var(--ink-2)}
+table.grid td.k{font:500 12px var(--mono);color:var(--ink-2);white-space:nowrap}
 table.grid tr.hi td{background:var(--acc-soft)}
+table.grid tr.dim td{color:var(--ink-3)}
 .scroll{overflow-x:auto}
-footer{border-top:1px solid var(--line);padding-block:26px 48px;color:var(--ink-3);font-size:13.5px}
+.keys{display:flex;flex-wrap:wrap;gap:4px;margin-top:14px}
+.keys code{font-size:11px;padding:2px 6px}
+.pairs{display:grid;grid-template-columns:repeat(auto-fit,minmax(224px,1fr));gap:8px;margin-top:14px}
+.pair{display:flex;justify-content:space-between;gap:10px;background:var(--sheet);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:13px}
+.pair span{color:var(--ink-3)}
+.pair b{font:600 12.8px var(--mono);font-variant-numeric:tabular-nums}
+details.more{margin-top:16px;background:var(--sheet);border:1px solid var(--line);border-radius:9px;padding:12px 15px}
+details.more summary{cursor:pointer;font:500 13.5px var(--sans);color:var(--ink-2)}
+details.more[open] summary{margin-bottom:10px}
+footer{border-top:1px solid var(--line);padding-block:28px 52px;color:var(--ink-3);font-size:13.5px}
 </style>
 </head>
 <body>
@@ -93,16 +116,14 @@ footer{border-top:1px solid var(--line);padding-block:26px 48px;color:var(--ink-
 <nav class="nav"><div class="wrap">
   <a class="brand" href="./"><b>R</b> receipt-vlm</a>
   <ul>
-    <li class="opt"><a class="nl" href="#data">Data</a></li>
-    <li class="opt"><a class="nl" href="#train">Fine-tune</a></li>
-    <li class="opt"><a class="nl" href="#quantize">Quantize</a></li>
-    <li class="opt"><a class="nl" href="#errors">Errors</a></li>
     <li><a class="nl" href="tour/">The tour</a></li>
     <li><a class="nl" href="demo/">Recorded extractions</a></li>
     <li><a class="nl" href="https://github.com/mazenDDr/receipt-vlm">GitHub</a></li>
   </ul>
   <button class="icon-btn" id="theme" type="button" aria-label="Switch theme">◐</button>
 </div></nav>
+
+<div class="rail"><div class="wrap" id="rail"></div></div>
 
 <div class="wrap">
   <header class="head">
@@ -111,138 +132,18 @@ footer{border-top:1px solid var(--line);padding-block:26px 48px;color:var(--ink-
     <p class="lede">Every part of the system, with the measurement that decided it. Fine-tuning moved
       field F1 from 0.440 to 0.836 on receipts the model had never seen. Quantizing to 4 bits cost
       nothing measurable. Two of the most convincing results along the way turned out to be bugs in
-      the pipeline, and both are here too.</p>
+      the pipeline, and both are written up here rather than quietly fixed.</p>
     <div class="quicks" id="quicks"></div>
   </header>
 </div>
 
-<div class="wrap">
-
-<section class="stage" id="data">
-  <p class="sub">01 · Data</p>
-  <h2>1,000 receipts, split so nothing leaks</h2>
-  <p>CORD v2 is 1,000 photographed Indonesian till receipts, each labelled with its fields as JSON.
-    The published split is 800 / 100 / 100. Before using it, every image was hashed perceptually and
-    compared across splits: <b>28 near-duplicate images appeared in more than one split</b> and were
-    dropped, leaving 773 / 99 / 100. Choices are made on dev; the test split was scored once.</p>
-  <figure>
-    <img src="assets/pipeline.svg" alt="The pipeline: data, train, merge, quantize, serve. Each stage writes a file the next one reads.">
-    <figcaption>Each stage writes files the next one reads, so any stage can be re-run alone.</figcaption>
-  </figure>
-  <div class="files">
-    <span class="file">src/receipt_vlm/data/build.py</span>
-    <span class="file">data/dedup.py</span>
-    <span class="file">scripts/build_data.py</span>
-    <span class="file">configs/data.yaml</span>
-  </div>
-  <div class="why"><b>Why a perceptual hash, not an exact one.</b> The same receipt appears in CORD
-    more than once at different crops and compressions, which an exact hash misses entirely. A
-    256-bit difference hash caught 28 of them. Without that check the test scores would have been
-    measured partly on receipts the model trained on.</div>
-</section>
-
-<section class="stage" id="train">
-  <p class="sub">02 · Fine-tuning</p>
-  <h2>QLoRA on one consumer GPU</h2>
-  <p>The base model is loaded in 4-bit NF4 with the vision tower kept in bf16, and LoRA adapters are
-    trained on the language model only. Loss is computed on the answer tokens alone. The whole run
-    fits in 16 GB of VRAM.</p>
-  <figure>
-    <img src="assets/finetune.svg" alt="Field F1 on the test split: base model 0.440, fine-tuned 0.836, a paired difference of +0.396 with a 95% interval from +0.345 to +0.442.">
-    <figcaption>Every comparison in this project is paired over the same receipts, with a 95%
-      bootstrap interval. A difference counts as real only when its interval excludes zero.</figcaption>
-  </figure>
-  <div class="files">
-    <span class="file">train/qlora.py</span>
-    <span class="file">train/collate.py</span>
-    <span class="file">train/sweep.py</span>
-    <span class="file">prompts.py</span>
-  </div>
-  <div class="why"><b>Why the language model only.</b> Adapting the vision projector as well was one
-    arm of the ablation and did not help: 0.867 against 0.900 on dev. Rank 8 and rank 32 both scored
-    below rank 16, and partial full fine-tuning of the last four layers scored 0.817. The full table
-    is in <a href="https://github.com/mazenDDr/receipt-vlm/blob/main/docs/ablations.md">docs/ablations.md</a>.</div>
-  <div class="scroll" id="ablation-grid"></div>
-</section>
-
-<section class="stage" id="quantize">
-  <p class="sub">03 · Quantization</p>
-  <h2>Four bits costs nothing here. Below four, it depends on calibration.</h2>
-  <p>The adapter is merged into bf16, then quantized two ways: AWQ W4A16 for vLLM, and seven GGUF bit
-    widths for llama.cpp. Everything from Q8_0 down to Q4_K_M sits within noise of the bf16 reference,
-    and each is faster.</p>
-  <figure>
-    <img src="assets/quantization.svg" alt="Field F1 by GGUF bit width. bf16 through Q4_K_M are all near 0.90. Q3_K_M falls to 0.100 and Q2_K to 0.000 without an importance matrix; with one they recover to 0.858 and 0.876.">
-    <figcaption>The drop at Q3 and Q2 looked like a bit-width cliff. It was an uncalibrated
-      quantization: our own build script never compiled <code>llama-imatrix</code>.</figcaption>
-  </figure>
-  <div class="scroll" id="quant-grid"></div>
-  <div class="why"><b>Why the vision projector has to be f32.</b> Built at f16 it overflows into NaN
-    on particular receipts and the model emits <code>!</code> until it hits the token cap — silently,
-    with the server reporting normal throughput. It cannot be quantized either, so it is a fixed
-    2.49 GiB on every GGUF row, which is why no GGUF build undercuts the AWQ checkpoint on disk.</div>
-  <figure>
-    <img src="assets/projector.svg" alt="The f16 projector floods exclamation marks on 6 of 10 receipts with field F1 0.540; at f32 the same weights score 0.899 with nothing truncated.">
-    <figcaption>Same weights, same prompt, same image cap. Only the projector's precision changed.</figcaption>
-  </figure>
-</section>
-
-<section class="stage" id="errors">
-  <p class="sub">04 · What is still wrong</p>
-  <h2>The model reads receipts well and misfiles what it reads</h2>
-  <p>All 100 held-out receipts produced valid JSON — there are no format failures. Reading the worst
-    twenty by hand against their photographs, and then counting every pattern found that way across
-    the whole dev split, gives a different picture from the aggregate score.</p>
-  <figure>
-    <img src="assets/failures.svg" alt="Of 100 test receipts: 41 exactly correct, 16 with a digit difference, 15 differing only in separators, 9 with a nesting error, and 0 with invalid JSON.">
-    <figcaption>Categories overlap: one receipt can show both a digit difference and a nesting error.</figcaption>
-  </figure>
-  <div class="why"><b>Why this points away from more data.</b> The worst receipt in the split has
-    every value correct and every key wrong. Separator conventions alone account for about a third of
-    the numeric gap. Neither is fixed by more training examples; both are decisions about CORD's
-    schema, which is what constrained or schema-aware decoding addresses. The conventions themselves
-    are written up in
-    <a href="https://github.com/mazenDDr/receipt-vlm/blob/main/docs/annotation_guidelines.md">docs/annotation_guidelines.md</a>.</div>
-</section>
-
-<section class="stage" id="serve">
-  <p class="sub">05 · Serving</p>
-  <h2>One image in, its fields out, with what the answer cost</h2>
-  <p>The API calls the same backend registry the evaluation does, so one service can front
-    transformers, vLLM or llama.cpp by changing two lines of config. Every response carries the
-    latency, token counts and throughput that the deployment decision was made on.</p>
-  <div class="files">
-    <span class="file">serve/api.py</span>
-    <span class="file">serve/gradio_app.py</span>
-    <span class="file">infer/backends.py</span>
-    <span class="file">Dockerfile</span>
-  </div>
-  <div class="why"><b>There is no hosted demo.</b> Running a 3B vision model costs money, and a free
-    CPU tier would serve it at a few tokens per second — a poor advertisement for something that runs
-    at 103 tokens per second on a GPU. The <a href="demo/">recorded extractions</a> show every
-    held-out receipt instead, and the README documents running it locally.</div>
-</section>
-
-<section class="stage" id="rebuild">
-  <p class="sub">Appendix</p>
-  <h2>Rebuilding all of this</h2>
-  <p>Every number on these pages is read from the committed runs under <code>outputs/runs/</code>.
-    Nothing is typed in by hand, so re-scoring a variant and rebuilding updates the pages.</p>
-  <div class="files">
-    <span class="file">python scripts/build_data.py</span>
-    <span class="file">python scripts/train.py</span>
-    <span class="file">python scripts/quantize_awq.py</span>
-    <span class="file">bash scripts/make_gguf.sh</span>
-    <span class="file">python scripts/tradeoffs_doc.py</span>
-    <span class="file">python scripts/build_site.py</span>
-  </div>
-</section>
-
-</div>
+<div class="wrap" id="stages"></div>
 
 <footer><div class="wrap">
   Receipts from <a href="https://huggingface.co/datasets/naver-clova-ix/cord-v2">CORD v2</a>
-  (Park et al., 2019), CC BY 4.0. Base model Qwen2.5-VL-3B-Instruct. MIT licensed.
+  (Park et al., 2019), CC BY 4.0. Base model
+  <a href="https://huggingface.co/Qwen/Qwen2.5-VL-3B-Instruct">Qwen2.5-VL-3B-Instruct</a>. MIT licensed.
+  Every number on this page is read from the committed runs.
   <a href="https://github.com/mazenDDr/receipt-vlm">Source</a>.
 </div></footer>
 
@@ -250,6 +151,11 @@ footer{border-top:1px solid var(--line);padding-block:26px 48px;color:var(--ink-
 const GRID = /*__GRID__*/null;
 (function () {
   const $ = (id) => document.getElementById(id);
+  const G = GRID;
+  const esc = (s) => String(s).replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]));
+  const n = (v, d) => (v === null || v === undefined ? "—" : Number(v).toFixed(d));
+  const pct = (v) => (v * 100).toFixed(0) + "%";
+
   try {
     const saved = localStorage.getItem("rv-theme");
     if (saved) document.documentElement.dataset.theme = saved;
@@ -260,35 +166,326 @@ const GRID = /*__GRID__*/null;
     try { localStorage.setItem("rv-theme", now); } catch (e) { /* ignore */ }
   });
 
-  const esc = (s) => String(s).replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]));
-  const n = (v, d) => (v === null || v === undefined ? "—" : v.toFixed(d));
+  $("quicks").innerHTML = G.quick.map((q) =>
+    `<div class="quick"><b${q.colour ? ` style="color:var(--${q.colour})"` : ""}>${esc(q.value)}</b>` +
+    `<span>${esc(q.label)}</span></div>`).join("");
 
-  $("quicks").innerHTML = GRID.quick.map((q) =>
-    `<div class="quick"><b${q.colour ? ` style="color:var(--${q.colour})"` : ""}>${q.value}</b>` +
-    `<span>${q.label}</span></div>`).join("");
-
-  function table(rows, columns, highlight) {
-    return `<table class="grid"><thead><tr>` +
+  function table(rows, columns, rowClass) {
+    return `<div class="scroll"><table class="grid"><thead><tr>` +
       columns.map((c) => `<th>${c.head}</th>`).join("") + "</tr></thead><tbody>" +
-      rows.map((r) => `<tr${highlight && highlight(r) ? ' class="hi"' : ""}>` +
+      rows.map((r) => `<tr${rowClass && rowClass(r) ? ` class="${rowClass(r)}"` : ""}>` +
         columns.map((c, i) => `<td${i === 0 ? ' class="k"' : ""}>${c.cell(r)}</td>`).join("") +
-        "</tr>").join("") + "</tbody></table>";
+        "</tr>").join("") + "</tbody></table></div>";
   }
+  const pair = (k, v) => `<div class="pair"><span>${esc(k)}</span><b>${esc(v)}</b></div>`;
 
-  $("ablation-grid").innerHTML = table(GRID.ablations, [
-    { head: "Arm", cell: (r) => esc(r.label) },
-    { head: "Dev field F1", cell: (r) => n(r.f1, 3) },
-    { head: "Numeric", cell: (r) => n(r.numeric, 3) },
-    { head: "Text", cell: (r) => n(r.text, 3) },
-  ], (r) => r.chosen);
+  const T = G.train;
+  const hours = (T.seconds / 3600).toFixed(2);
 
-  $("quant-grid").innerHTML = table(GRID.quant, [
-    { head: "Build", cell: (r) => esc(r.label) },
-    { head: "Split", cell: (r) => r.split },
-    { head: "Field F1", cell: (r) => n(r.f1, 3) },
-    { head: "Latency p50", cell: (r) => n(r.p50, 2) + " s" },
-    { head: "Output tok/s", cell: (r) => n(r.tps, 1) },
-  ], (r) => r.chosen);
+  const stages = [
+    {
+      id: "data", n: "01", t: "Data",
+      h: "1,000 receipts, split so that nothing leaks",
+      body: `
+        <p>CORD v2 is 1,000 photographed Indonesian till receipts, each labelled with its fields as JSON.
+        The published split is 800 / 100 / 100. Before any of it was used, every image was hashed
+        perceptually and compared across splits — because the same receipt appears more than once at
+        different crops and compressions, which an exact hash misses entirely.</p>
+        ${table(G.splits, [
+          { head: "Split", cell: (r) => esc(r.split) },
+          { head: "Receipts", cell: (r) => r.receipts },
+          { head: "Fields", cell: (r) => r.fields.toLocaleString() },
+          { head: "Numeric share", cell: (r) => pct(r.numeric_share) },
+          { head: "Fields/receipt p50", cell: (r) => r.fields_p50 },
+          { head: "max", cell: (r) => r.fields_max },
+          { head: "Image p50", cell: (r) => `${r.width_p50}×${r.height_p50}` },
+          { head: "MP p95", cell: (r) => n(r.mp_p95, 1) },
+        ])}
+        <h3>The leakage check</h3>
+        <div class="pairs">
+          ${pair("hash size", G.leakage.hash_bits + " bits")}
+          ${pair("max distance counted", G.leakage.max_distance)}
+          ${pair("identical across splits", G.leakage.cross_split_exact)}
+          ${pair("near-duplicate pairs", G.leakage.cross_split_pairs)}
+          ${pair("identical within a split", G.leakage.within_split_exact)}
+          ${pair("nearest-other-split p50", G.leakage.nearest.p50)}
+        </div>
+        <p>Before exclusion the splits held ${G.leakage.before.train} / ${G.leakage.before.dev} /
+        ${G.leakage.before.test}. Every near-duplicate was resolved in favour of the later split — the
+        train copy dropped, and for a dev/test pair the dev copy dropped — so the test split stayed
+        whole. <b>${G.leakage.excluded.length} receipts were excluded.</b></p>
+        <details class="more"><summary>All ${G.leakage.excluded.length} excluded receipts, with the
+          receipt each one duplicates and the hash distance between them</summary>
+          ${table(G.leakage.excluded, [
+            { head: "Excluded", cell: (r) => esc(r.example_id) },
+            { head: "Copy of", cell: (r) => esc(r.copy_of) },
+            { head: "Distance", cell: (r) => r.distance },
+          ])}
+        </details>
+        <h3>The schema</h3>
+        <p>${G.key_paths.length} distinct key paths appear across the labels. Every value is a string
+        copied exactly as printed, separators and symbols included — which is why scoring compares
+        strings and why a separator convention costs as much as a misread digit.</p>
+        <div class="keys">${G.key_paths.map((k) => `<code>${esc(k)}</code>`).join("")}</div>
+        <h3>How long the answers are</h3>
+        ${table(Object.entries(G.target_tokens).map(([k, v]) => ({ split: k, ...v })), [
+          { head: "Split", cell: (r) => esc(r.split) },
+          { head: "min", cell: (r) => n(r.min, 0) },
+          { head: "p50", cell: (r) => n(r.p50, 0) },
+          { head: "p95", cell: (r) => n(r.p95, 0) },
+          { head: "max", cell: (r) => n(r.max, 0) },
+        ])}
+        <p>The generation cap is 1,024 tokens, comfortably above the longest label at
+        ${n(G.target_tokens.train.max, 0)}, so a truncated answer means something went wrong rather
+        than that the receipt was long.</p>
+        <div class="files">
+          <span class="file">data/build.py</span><span class="file">data/dedup.py</span>
+          <span class="file">data/stats.py</span><span class="file">scripts/build_data.py</span>
+          <span class="file">configs/data.yaml</span>
+        </div>
+        <div class="why"><b>Why a perceptual hash, not an exact one.</b> Exact hashing found
+        ${G.leakage.cross_split_exact} cross-split duplicates. A ${G.leakage.hash_bits}-bit difference
+        hash found ${G.leakage.cross_split_pairs}. Without that check, part of the test score would have
+        been measured on receipts the model trained on.</div>`,
+      figure: ["assets/pipeline.svg", "The pipeline: data, train, merge, quantize, serve.",
+        "Each stage writes files the next one reads, so any stage can be re-run alone."],
+    },
+    {
+      id: "train", n: "02", t: "Fine-tuning",
+      h: "QLoRA on one consumer GPU",
+      body: `
+        <p>The base model loads in 4-bit NF4 with the vision tower kept in bf16, and LoRA adapters train
+        on the language model only. Loss is computed on the answer tokens alone, so the model is never
+        rewarded for reproducing the prompt. The whole run fits in 16 GB.</p>
+        <div class="pairs">
+          ${pair("wall clock", hours + " h")}
+          ${pair("peak VRAM", Math.round(T.peak_vram_mb).toLocaleString() + " MiB")}
+          ${pair("trainable parameters", (T.trainable_params / 1e6).toFixed(1) + " M")}
+          ${pair("final train loss", n(T.loss, 4))}
+          ${pair("base weights", "4-bit NF4, frozen")}
+          ${pair("hardware", "RTX 5060 Ti, 16 GB")}
+        </div>
+        <p>Every knob the run was given, as it was saved with the run:</p>
+        <details class="more" open><summary>${T.hyper.length} hyperparameters</summary>
+          ${table(T.hyper.map(([k, v]) => ({ k, v })), [
+            { head: "Setting", cell: (r) => esc(r.k) },
+            { head: "Value", cell: (r) => esc(r.v) },
+          ])}
+        </details>
+        <h3>What was tried, and what actually helped</h3>
+        <p>Each arm below is a separate training run scored on dev. The chosen one is highlighted.</p>
+        ${table(G.ablations, [
+          { head: "Arm", cell: (r) => esc(r.label) },
+          { head: "Dev field F1", cell: (r) => n(r.f1, 3) },
+          { head: "Numeric", cell: (r) => n(r.numeric, 3) },
+          { head: "Text", cell: (r) => n(r.text, 3) },
+        ], (r) => (r.chosen ? "hi" : ""))}
+        <div class="files">
+          <span class="file">train/qlora.py</span><span class="file">train/collate.py</span>
+          <span class="file">train/sweep.py</span><span class="file">prompts.py</span>
+          <span class="file">configs/train/qlora-r16-lm.yaml</span>
+          <span class="file">configs/sweeps/*.yaml</span>
+        </div>
+        <div class="why"><b>Why the language model only.</b> Adapting the vision projector as well was one
+        arm of the sweep and did not help. Rank 8 and rank 32 both scored below rank 16. Partial full
+        fine-tuning of the last four layers scored lowest of everything tried. The model does not need to
+        see differently; it needs to write differently.</div>`,
+      figure: ["assets/finetune.svg",
+        "Field F1 on the test split: base 0.440, fine-tuned 0.836, paired +0.396 [+0.345, +0.442].",
+        "Every comparison is paired over the same receipts with a 95% bootstrap interval. A difference counts as real only when that interval excludes zero."],
+    },
+    {
+      id: "scoring", n: "03", t: "Scoring",
+      h: "Field-level F1, and why it is strict",
+      body: `
+        <p>Both the label and the model's output are flattened into a multiset of
+        <code>(key path, value)</code> pairs — <code>("menu.nm", "TWIST DONUT")</code>,
+        <code>("total.total_price", "54,000")</code> — and compared as strings. This follows Donut's CORD
+        evaluation, so the numbers can be read next to published ones.</p>
+        <p>Strictness is deliberate: digits are the point of a receipt. But it means a labelling
+        convention the model does not follow costs exactly as much as a misread digit, which is why the
+        lenient numeric variant is reported beside the strict one — it keeps digits and ignores
+        separators, currency and trailing zero cents, so the gap between them is the formatting share.</p>
+        ${table(G.metrics_table, [
+          { head: "Model", cell: (r) => esc(r.label) },
+          { head: "Field F1", cell: (r) => n(r.f1, 3) },
+          { head: "Numeric", cell: (r) => n(r.f1_numeric, 3) },
+          { head: "Numeric lenient", cell: (r) => n(r.f1_numeric_lenient, 3) },
+          { head: "Text", cell: (r) => n(r.f1_text, 3) },
+          { head: "Precision", cell: (r) => n(r.precision, 3) },
+          { head: "Recall", cell: (r) => n(r.recall, 3) },
+          { head: "Exact match", cell: (r) => n(r.exact_match, 3) },
+          { head: "TED", cell: (r) => n(r.ted_accuracy, 3) },
+          { head: "Valid JSON", cell: (r) => n(r.valid_json, 3) },
+        ])}
+        <p>Alongside F1: JSON validity, whole-receipt exact match, and tree-edit-distance accuracy, which
+        also counts item order — items listed in a different sequence lose TED but not field F1.</p>
+        <div class="files">
+          <span class="file">eval/fields.py</span><span class="file">eval/normalize.py</span>
+          <span class="file">eval/metrics.py</span><span class="file">eval/bootstrap.py</span>
+          <span class="file">eval/compare.py</span><span class="file">eval/ted.py</span>
+        </div>
+        <div class="why"><b>Selection happened on dev only.</b> Prompt, image cap, LoRA rank, learning
+        rate, checkpoint and bit width were all chosen on the dev split. The test split was scored once,
+        for final variants. Where a dev result and a test result disagree in this guide, both are shown —
+        see Q2_K below.</div>`,
+    },
+    {
+      id: "quantize", n: "04", t: "Quantization",
+      h: "Four bits costs nothing here. Below four, it depends on calibration.",
+      body: `
+        <p>The adapter merges into bf16 — one set of weights to quantize and the reference everything is
+        measured against — then goes two ways: AWQ W4A16 for vLLM, and seven GGUF bit widths for
+        llama.cpp. Everything from Q8_0 down to Q4_K_M sits within noise of the reference, and each is
+        faster than it.</p>
+        ${table(G.quant, [
+          { head: "Build", cell: (r) => esc(r.label) },
+          { head: "Split", cell: (r) => r.split },
+          { head: "Field F1", cell: (r) => n(r.f1, 3) },
+          { head: "Latency p50", cell: (r) => n(r.p50, 2) + " s" },
+          { head: "Output tok/s", cell: (r) => n(r.tps, 1) },
+        ], (r) => (r.chosen ? "hi" : (r.f1 < 0.5 ? "dim" : "")))}
+        <div class="why bad"><b>The cliff at Q3 and Q2 was ours, not the format's.</b> Without an
+        importance matrix, Q3_K_M scored 0.100 and Q2_K emitted a median of three tokens per receipt. That
+        looked exactly like a bit-width cliff, and it was written up as one — in a commit and a pull
+        request — before being tested. It was not: <code>build_llama_cuda.sh</code> compiled four
+        llama.cpp targets and <code>llama-imatrix</code> was not among them, so those rows were quantized
+        with no calibration at all. With a matrix built from the training receipts they recover to 0.858
+        and 0.876.</div>
+        <div class="why warn"><b>And the recovery did not survive the test split.</b> Q2_K+imatrix ties
+        bf16 on dev (−0.025, not real) and is genuinely worse on test (−0.054 [−0.092, −0.020]). This is
+        what a held-out split is for. <b>Q4_K_M is the row to ship.</b></div>`,
+      figure: ["assets/quantization.svg",
+        "Field F1 by GGUF bit width: bf16 through Q4_K_M all near 0.90; Q3_K_M and Q2_K collapse without an importance matrix and recover with one.",
+        "Dev split. The two uncalibrated rows are dimmed in the table above."],
+    },
+    {
+      id: "projector", n: "05", t: "The projector",
+      h: "Why the vision projector must be f32, and cannot be quantized",
+      body: `
+        <p>Built at f16, llama.cpp emitted floods of <code>!</code> on particular receipts until it hit the
+        generation cap. Content-dependent, perfectly deterministic, and silent — the server logged normal
+        prompt evaluation and 57 tokens per second throughout.</p>
+        <p>Four other explanations were tested and ruled out first: prompt-cache reuse, context
+        exhaustion, media type, and request position. What survived: the images were ingested correctly
+        (prompt token counts matched the vLLM run receipt for receipt), and the output was token 0
+        repeated — which is what llama.cpp emits when logits are NaN. f16 saturates at 65504; the vision
+        tower runs in bf16 everywhere else, so only this path overflowed.</p>
+        <div class="why"><b>The deployment consequence.</b> The projector cannot be quantized, so it is a
+        fixed 2.49 GiB on every GGUF row — 68% of the smallest one's total. No GGUF bit width, not even
+        2-bit, undercuts the AWQ checkpoint's 3.31 GiB. Lower precision did not produce a smaller
+        deployment.</div>`,
+      figure: ["assets/projector.svg",
+        "With an f16 projector 6 of 10 receipts flood and field F1 is 0.540; at f32 the same weights score 0.899 with nothing truncated.",
+        "Same weights, same prompt, same image cap. Only the projector's precision changed."],
+    },
+    {
+      id: "errors", n: "06", t: "What is still wrong",
+      h: "The model reads receipts well and misfiles what it reads",
+      body: `
+        <p>All 100 held-out receipts produced valid JSON — there are no format failures at all. Reading
+        the twenty worst by hand against their photographs, then counting every pattern found that way
+        across the whole dev split, gives a different picture from the aggregate score.</p>
+        <p>The worst receipt in the split has <b>every value correct and every key wrong</b>:
+        <code>itemsubtotal</code> written as <code>discountprice</code>, the item code folded into the
+        product name, and a <code>sub_total</code> invented out of a quantity line. The second worst
+        reads all eight of its items correctly and then nests six of them underneath the third.</p>
+        <h3>The conventions the labels follow</h3>
+        <p>Documented from the audit in
+        <a href="https://github.com/mazenDDr/receipt-vlm/blob/main/docs/annotation_guidelines.md">annotation_guidelines.md</a>:
+        units stay with the count (<code>1Prs</code> is a quantity, not part of the name); a count may be
+        printed anywhere on the line; items are flat unless the receipt nests them; the label transcribes
+        what is printed, stray marks included; separators follow the printed glyph and are not consistent
+        between receipts; names keep their printed spacing; and payment sections are distinguished by
+        which line they sit on.</p>
+        <div class="why"><b>Why this points away from more data.</b> Separator conventions alone account
+        for about a third of the numeric gap — strict numeric F1 0.866 against 0.910 lenient. Neither
+        that nor the nesting errors are fixed by more training examples; both are decisions about CORD's
+        schema, which is what constrained or schema-aware decoding addresses.</div>`,
+      figure: ["assets/failures.svg",
+        "Of 100 test receipts: 41 exactly correct, 16 with a digit difference, 15 differing only in separators, 9 with a nesting error, 0 with invalid JSON.",
+        "Categories overlap: one receipt can show both a digit difference and a nesting error."],
+    },
+    {
+      id: "serve", n: "07", t: "Serving",
+      h: "One image in, its fields out, with what the answer cost",
+      body: `
+        <p>The API calls the same backend registry the evaluation does, so one service fronts
+        transformers, vLLM or llama.cpp by changing two lines of config — which matters because the
+        recommendation differs by target: AWQ on vLLM for a GPU server, Q4_K_M on llama.cpp otherwise.
+        Every response carries the latency, token counts and throughput that answer cost.</p>
+        <p>Verified end to end against the real AWQ checkpoint: <code>/health</code> answers before the
+        model finishes loading, a real receipt returns its fields in 0.802 s at 98.5 tok/s, and
+        non-images and empty uploads are refused before the model is touched.</p>
+        <div class="files">
+          <span class="file">serve/api.py</span><span class="file">serve/gradio_app.py</span>
+          <span class="file">infer/backends.py</span><span class="file">Dockerfile</span>
+        </div>
+        <div class="why"><b>There is no hosted demo.</b> Running a 3B vision model costs money, and a free
+        CPU tier would serve it at a few tokens per second — a poor advertisement for something that runs
+        at 103 tok/s on a GPU. The <a href="demo/">recorded extractions</a> show every held-out receipt
+        instead, and the README documents running it locally.</div>`,
+    },
+    {
+      id: "repo", n: "08", t: "The code",
+      h: "Where everything lives",
+      body: `
+        ${table(G.tree, [
+          { head: "Package", cell: (r) => esc(r.path) },
+          { head: "What it does", cell: (r) => esc(r.what) },
+          { head: "Files", cell: (r) => r.files },
+          { head: "Lines", cell: (r) => r.lines.toLocaleString() },
+        ])}
+        <p>${G.tree.reduce((a, r) => a + r.lines, 0).toLocaleString()} lines of Python across
+        ${G.tree.reduce((a, r) => a + r.files, 0)} files, generated from the tree rather than typed.
+        The tests run on CPU against a three-receipt fixture and never download a model.</p>
+        <h3>Rebuilding all of it</h3>
+        <p>Every number on these pages is read from <code>outputs/runs/</code>. Re-score a variant,
+        rebuild, and the pages follow.</p>
+        <div class="files">
+          <span class="file">python scripts/build_data.py</span>
+          <span class="file">python scripts/train.py</span>
+          <span class="file">python scripts/sweep.py</span>
+          <span class="file">python scripts/run_infer.py</span>
+          <span class="file">python scripts/quantize_awq.py</span>
+          <span class="file">bash scripts/make_gguf.sh</span>
+          <span class="file">python scripts/compare.py</span>
+          <span class="file">python scripts/tradeoffs_doc.py</span>
+          <span class="file">python scripts/build_site.py</span>
+        </div>
+        <h3>Terms used here</h3>
+        <div class="pairs">
+          ${pair("QLoRA", "4-bit base + trainable adapters")}
+          ${pair("NF4", "4-bit normal-float weights")}
+          ${pair("AWQ", "activation-aware 4-bit")}
+          ${pair("GGUF", "llama.cpp weight format")}
+          ${pair("imatrix", "importance matrix for K-quants")}
+          ${pair("mmproj", "the vision projector file")}
+          ${pair("TED", "tree-edit-distance accuracy")}
+          ${pair("paired", "same receipts, both variants")}
+        </div>`,
+    },
+  ];
+
+  $("stages").innerHTML = stages.map((s) => {
+    const fig = s.figure
+      ? `<figure><img src="${s.figure[0]}" alt="${esc(s.figure[1])}"><figcaption>${esc(s.figure[2])}</figcaption></figure>`
+      : "";
+    return `<section class="stage" id="${s.id}"><div class="kicker"><i>${s.n}</i></div>`
+      + `<h2>${s.h}</h2>${fig}${s.body}</section>`;
+  }).join("");
+
+  $("rail").innerHTML = stages.map((s) =>
+    `<a href="#${s.id}" data-id="${s.id}"><i>${s.n}</i>${s.t}</a>`).join("");
+  const links = [...$("rail").querySelectorAll("a")];
+  const seen = new Map();
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => seen.set(e.target.id, e.intersectionRatio));
+    let best = null;
+    seen.forEach((ratio, id) => { if (ratio > 0 && (!best || ratio > seen.get(best))) best = id; });
+    links.forEach((a) => a.setAttribute("aria-current", String(a.dataset.id === best)));
+  }, { rootMargin: "-118px 0px -55% 0px", threshold: [0, 0.25, 0.5, 1] });
+  stages.forEach((s) => { const el = document.getElementById(s.id); if (el) io.observe(el); });
 })();
 </script>
 </body>
