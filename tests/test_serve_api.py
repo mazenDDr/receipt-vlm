@@ -141,6 +141,29 @@ def test_the_readout_reports_throughput_and_survives_a_zero_latency():
     assert readout(stalled)["output_tokens_per_s"] == 0.0  # must not divide by zero
 
 
+def test_env_overrides_point_a_container_at_its_mounted_weights():
+    """The Dockerfile sets these; without them the image would serve whatever the config file says."""
+    from receipt_vlm.serve.api import apply_env_overrides
+
+    cfg = InferConfig(model="Qwen/Qwen2.5-VL-3B-Instruct", backend="hf", variant="base-bf16")
+    moved = apply_env_overrides(
+        cfg,
+        {
+            "RECEIPT_VLM_MODEL": "/models/awq",
+            "RECEIPT_VLM_BACKEND": "vllm",
+            "RECEIPT_VLM_VARIANT": "ft-r16-awq-w4a16",
+        },
+    )
+    assert moved.model == "/models/awq" and moved.backend == "vllm"
+    assert moved.variant == "ft-r16-awq-w4a16"
+    assert moved.max_model_len == cfg.max_model_len  # everything else still comes from the config
+
+    assert apply_env_overrides(cfg, {}) is cfg  # nothing set, nothing copied
+    assert apply_env_overrides(cfg, {"RECEIPT_VLM_BACKEND": ""}).backend == "hf"  # empty is not a value
+    with pytest.raises(ValueError, match="backend"):
+        apply_env_overrides(cfg, {"RECEIPT_VLM_BACKEND": "tensorrt"})
+
+
 def test_the_demo_readout_line_names_the_runtime_and_flags_bad_output():
     numbers = {
         "valid_json": False,

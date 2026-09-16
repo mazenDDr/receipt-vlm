@@ -19,6 +19,7 @@ import hashlib
 import os
 import tempfile
 import uuid
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -133,14 +134,35 @@ def create_app(cfg: InferConfig, engine: Any = None, gpu_cost_per_hour: float = 
     return app
 
 
+# A container image cannot know where its weights will be mounted, so the checkpoint and the runtime
+# are overridable from the environment. Everything else still comes from the config file.
+ENV_OVERRIDES = {
+    "RECEIPT_VLM_MODEL": "model",
+    "RECEIPT_VLM_BACKEND": "backend",
+    "RECEIPT_VLM_VARIANT": "variant",
+    "RECEIPT_VLM_ADAPTER": "adapter",
+    "RECEIPT_VLM_MMPROJ": "mmproj",
+}
+
+
+def apply_env_overrides(cfg: InferConfig, env: Mapping[str, str] | None = None) -> InferConfig:
+    """Apply the container overrides. Unset or empty variables are ignored, never written as ""."""
+    env = os.environ if env is None else env
+    updates = {field: env[name] for name, field in ENV_OVERRIDES.items() if env.get(name)}
+    if not updates:
+        return cfg
+    return InferConfig.model_validate({**cfg.model_dump(), **updates})
+
+
 def default_app() -> Any:
     """Entry point for `uvicorn "receipt_vlm.serve.api:default_app" --factory`.
 
-    RECEIPT_VLM_CONFIG picks the runtime (default configs/infer.yaml);
-    RECEIPT_VLM_GPU_COST_PER_HOUR adds an estimated cost to each response when set.
+    RECEIPT_VLM_CONFIG picks the config file (default configs/infer.yaml); the variables in
+    ENV_OVERRIDES point it at mounted weights; RECEIPT_VLM_GPU_COST_PER_HOUR adds an estimated
+    cost to each response when set.
     """
     from receipt_vlm import config
 
     cfg = config.load(Path(os.environ.get("RECEIPT_VLM_CONFIG", "configs/infer.yaml")), InferConfig)
     rate = float(os.environ.get("RECEIPT_VLM_GPU_COST_PER_HOUR", "0"))
-    return create_app(cfg, gpu_cost_per_hour=rate)
+    return create_app(apply_env_overrides(cfg), gpu_cost_per_hour=rate)
