@@ -60,6 +60,13 @@ everywhere. Peak GPU is measured in-process for transformers and sampled with
 | GGUF Q2_K, no imatrix | llama.cpp | dev | 0.84 | 1.23 | 3.6 | — |
 | GGUF Q2_K + imatrix | llama.cpp | test | 1.51 | 2.62 | 76.8 | 5,260 |
 
+## Accuracy against latency
+
+Marker area is the weights that must be loaded; colour is the runtime. The two
+uncalibrated K-quants sit on the floor of the chart, at F1 0.100 and 0.000.
+
+![Field F1 against latency per receipt, by runtime and bit width](tradeoffs.svg)
+
 ## Paired comparisons
 
 Each difference is computed receipt by receipt over the same split, with a 95%
