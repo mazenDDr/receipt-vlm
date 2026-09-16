@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 210" width="880" height="210" role="img" aria-label="The pipeline: 1000 CORD receipts split with a leakage check, QLoRA fine-tuning on one GPU, the adapter merged to bf16, then quantized to AWQ 4-bit and to GGUF bit widths, and served over HTTP. Each stage writes files the next one reads.">
+  <title>From receipts to a served 4-bit model</title>
+  <style>
+    .bg{fill:#ECEEF1}
+    .box{fill:#FFFFFF;stroke:#DCE0E6}
+    .boxa{fill:#FFFFFF;stroke:#2D5BD6;stroke-width:1.6}
+    .t{font:600 12px -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;fill:#171B21}
+    .s{font:400 9.6px -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;fill:#6B7480}
+    .n{font:600 9.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#2D5BD6;letter-spacing:.06em}
+    .f{font:400 9px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#8A93A1}
+    .lab{font:600 9.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#6B7480;letter-spacing:.1em}
+    .arr{fill:none;stroke:#B9C0CA;stroke-width:1.5;marker-end:url(#a)}
+    .flow{fill:none;stroke:#2D5BD6;stroke-width:2.2;stroke-dasharray:6 10;stroke-linecap:round}
+    @keyframes run{to{stroke-dashoffset:-320}}
+    /* A diagram: every box is readable at rest and the flowing line carries the motion. */
+    .flow{animation:run 7s linear infinite}
+    @media (prefers-reduced-motion:reduce){*{animation:none!important;opacity:1!important}}
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L8 4 L0 8 z" fill="#B9C0CA"/>
+    </marker>
+  </defs>
+  <rect class="bg" width="880" height="210" rx="14"/>
+
+  <text class="lab" x="28" y="28">EVERY STAGE WRITES A FILE THE NEXT ONE READS</text>
+
+  <rect class="box" x="28" y="44" width="150" height="96" rx="7"/>
+  <text class="n" x="42" y="64">01 · DATA</text>
+  <text class="t" x="42" y="84">CORD v2</text>
+  <text class="s" x="42" y="100">1,000 receipts, split</text>
+  <text class="s" x="42" y="114">773 / 99 / 100 after a</text>
+  <text class="s" x="42" y="128">perceptual-hash check</text>
+  <text class="f" x="42" y="156">examples.jsonl</text>
+
+  <rect class="box" x="196" y="44" width="150" height="96" rx="7"/>
+  <text class="n" x="210" y="64">02 · TRAIN</text>
+  <text class="t" x="210" y="84">QLoRA, one GPU</text>
+  <text class="s" x="210" y="100">NF4 base, bf16 vision,</text>
+  <text class="s" x="210" y="114">r16 on the language</text>
+  <text class="s" x="210" y="128">model only</text>
+  <text class="f" x="210" y="156">adapter/</text>
+
+  <rect class="box" x="364" y="44" width="150" height="96" rx="7"/>
+  <text class="n" x="378" y="64">03 · MERGE</text>
+  <text class="t" x="378" y="84">Adapter into bf16</text>
+  <text class="s" x="378" y="100">one set of weights to</text>
+  <text class="s" x="378" y="114">quantize, and the</text>
+  <text class="s" x="378" y="128">reference to beat</text>
+  <text class="f" x="378" y="156">merged-bf16/</text>
+
+  <g class="g2">
+    <rect class="boxa" x="532" y="44" width="150" height="96" rx="7"/>
+    <text class="n" x="546" y="64">04 · QUANTIZE</text>
+    <text class="t" x="546" y="84">AWQ · GGUF</text>
+    <text class="s" x="546" y="100">W4A16 for vLLM, plus</text>
+    <text class="s" x="546" y="114">seven GGUF bit widths</text>
+    <text class="s" x="546" y="128">for llama.cpp</text>
+    <text class="f" x="546" y="156">awq-w4a16/ · *.gguf</text>
+
+    <rect class="boxa" x="700" y="44" width="152" height="96" rx="7"/>
+    <text class="n" x="714" y="64">05 · SERVE</text>
+    <text class="t" x="714" y="84">One image in</text>
+    <text class="s" x="714" y="100">fields out, with the</text>
+    <text class="s" x="714" y="114">latency and tokens</text>
+    <text class="s" x="714" y="128">that answer cost</text>
+    <text class="f" x="714" y="156">POST /extract</text>
+  </g>
+
+  <path class="arr" d="M178 92 H192"/>
+  <path class="arr" d="M346 92 H360"/>
+  <path class="arr" d="M514 92 H528"/>
+  <path class="arr" d="M682 92 H696"/>
+  <path class="flow" d="M28 176 H852"/>
+  <text class="s" x="28" y="196">Every variant is scored by the same code on the same split, so the rows of the trade-off table can be compared at all.</text>
+</svg>

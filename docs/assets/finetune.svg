@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 250" width="880" height="250" role="img" aria-label="Field F1 on the 100-receipt test split: base model 0.440, fine-tuned 0.836. The paired difference is plus 0.396 with a 95 percent interval from plus 0.345 to plus 0.442, which excludes zero. Numeric fields gain plus 0.418 and text fields plus 0.318.">
+  <title>What fine-tuning bought, with the interval</title>
+  <style>
+    .bg{fill:#ECEEF1}
+    .card{fill:#FFFFFF;stroke:#DCE0E6}
+    .lab{font:600 9.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#6B7480;letter-spacing:.1em}
+    .t{font:600 12.5px -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;fill:#171B21}
+    .s{font:400 10px -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;fill:#6B7480}
+    .num{font:600 22px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#171B21}
+    .numb{fill:#8A93A1}
+    .numa{fill:#2E7D4F}
+    .grid{stroke:#E4E8ED}
+    .ax{font:400 9px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#8A93A1}
+    .barb{fill:#B9C0CA;transform-box:fill-box;transform-origin:left center}
+    .bara{fill:#2E7D4F;transform-box:fill-box;transform-origin:left center}
+    .ci{stroke:#2D5BD6;stroke-width:2.4;stroke-linecap:round}
+    .cid{stroke:#2D5BD6;stroke-width:1.4}
+    .zero{stroke:#C0392B;stroke-width:1.4;stroke-dasharray:3 3}
+    .acc{fill:#2D5BD6}
+    /* The reveal finishes by 52% so the completed figure holds for most of every loop. */
+    @keyframes grow{0%,4%{transform:scaleX(0)}18%,100%{transform:scaleX(1)}}
+    @keyframes grow2{0%,18%{transform:scaleX(0)}32%,100%{transform:scaleX(1)}}
+    @keyframes show{0%,34%{opacity:0}42%,100%{opacity:1}}
+    @keyframes showl{0%,44%{opacity:0}52%,100%{opacity:1}}
+    .barb{animation:grow 10s infinite}
+    .bara{animation:grow2 10s infinite}
+    .ciw{animation:show 10s infinite}
+    .lateg{animation:showl 10s infinite}
+    @media (prefers-reduced-motion:reduce){*{animation:none!important;opacity:1!important;transform:scaleX(1)!important}}
+  </style>
+  <rect class="bg" width="880" height="250" rx="14"/>
+
+  <text class="lab" x="28" y="28">FIELD F1 · 100 HELD-OUT RECEIPTS · SCORED ONCE</text>
+
+  <!-- bars -->
+  <line class="grid" x1="150" y1="44" x2="150" y2="150"/>
+  <line class="grid" x1="330" y1="44" x2="330" y2="150"/>
+  <line class="grid" x1="510" y1="44" x2="510" y2="150"/>
+  <text class="ax" x="146" y="164">0.0</text>
+  <text class="ax" x="326" y="164">0.5</text>
+  <text class="ax" x="506" y="164">1.0</text>
+
+  <text class="t" x="28" y="72">Base model</text>
+  <text class="s" x="28" y="88">zero-shot</text>
+  <rect class="barb" x="150" y="58" width="316.8" height="26" rx="3"/>
+  <text class="num numb" x="480" y="79">0.440</text>
+
+  <text class="t" x="28" y="126">Fine-tuned</text>
+  <text class="s" x="28" y="142">QLoRA r16</text>
+  <rect class="bara" x="150" y="112" width="601.9" height="26" rx="3"/>
+  <text class="num numa" x="766" y="133">0.836</text>
+
+  <!-- paired difference -->
+  <g class="ciw">
+    <rect class="card" x="28" y="180" width="404" height="52" rx="7"/>
+    <text class="lab" x="42" y="200">PAIRED DIFFERENCE, SAME RECEIPTS</text>
+    <line class="zero" x1="60" y1="208" x2="60" y2="226"/>
+    <text class="ax" x="54" y="238">0</text>
+    <line class="ci" x1="252" y1="217" x2="344" y2="217"/>
+    <line class="cid" x1="252" y1="211" x2="252" y2="223"/>
+    <line class="cid" x1="344" y1="211" x2="344" y2="223"/>
+    <circle class="acc" cx="298" cy="217" r="4"/>
+    <text class="t acc" x="84" y="222">+0.396</text>
+    <text class="s" x="356" y="222">excludes 0</text>
+    <text class="ax" x="252" y="238">+0.345</text>
+    <text class="ax" x="322" y="238">+0.442</text>
+  </g>
+
+  <g class="lateg">
+    <rect class="card" x="448" y="180" width="404" height="52" rx="7"/>
+    <text class="lab" x="462" y="200">AND IT IS NOT ONLY THE DIGITS</text>
+    <text class="t" x="462" y="222">numeric +0.418</text>
+    <text class="s" x="560" y="222">·</text>
+    <text class="t" x="576" y="222">text +0.318</text>
+    <text class="s" x="668" y="222">· both real, both paired</text>
+  </g>
+
+  <text class="s" x="28" y="248">Selection happened on the dev split; the test split was scored once, for final variants only.</text>
+</svg>

@@ -1,0 +1,44 @@
+# Publishes the project pages: the field guide at the root, the one-receipt tour at /tour/ and the
+# recorded extractions at /demo/.
+# All three are static files built locally with scripts/build_site.py and committed under site/.
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ["site/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble the site
+        run: |
+          mkdir -p _site/tour _site/demo
+          cp site/guide.html _site/index.html
+          cp site/index.html _site/tour/index.html
+          cp site/demo.html _site/demo/index.html
+          cp -r site/receipts _site/receipts
+          # The animated figures live in docs/assets/ because the README embeds them from there;
+          # the guide references them as assets/*.svg, so they are served at the site root too.
+          cp -r docs/assets _site/assets
+          touch _site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
