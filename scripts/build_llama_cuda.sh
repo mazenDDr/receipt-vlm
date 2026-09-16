@@ -17,6 +17,8 @@ fi
 
 PATH="$QUANT/bin:$PATH" cmake -S "$LLAMA" -B "$LLAMA/build-cuda" -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=120 \
   -DCUDAToolkit_ROOT="$QUANT" -DCMAKE_BUILD_TYPE=Release
+# llama-imatrix is not optional: without an importance matrix, K-quants below Q4 collapse (Q2_K emitted a
+# median of 3 tokens). Leaving it out of this list is what produced that result in the first place.
 PATH="$QUANT/bin:$PATH" cmake --build "$LLAMA/build-cuda" -j 20 \
-  --target llama-mtmd-cli llama-quantize llama-server llama-bench
+  --target llama-mtmd-cli llama-quantize llama-server llama-bench llama-imatrix
 ls "$LLAMA/build-cuda/bin"

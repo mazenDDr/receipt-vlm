@@ -27,4 +27,19 @@ fi
 for q in Q8_0 Q6_K Q5_K_M Q4_K_M Q3_K_M Q2_K; do
   [ -f "$OUT/model-$q.gguf" ] || $QUANTIZE "$OUT/model-bf16.gguf" "$OUT/model-$q.gguf" "$q"
 done
+
+# K-quants below Q4 need an importance matrix. Without one they do not degrade, they collapse: measured on dev,
+# Q3_K_M scored 0.100 with 17% valid JSON and Q2_K emitted a median of 3 tokens. With a matrix built from the
+# training receipts, Q3_K_M scores 0.858 and Q2_K 0.876 - the latter statistically tied with bf16 on field F1.
+# Both sets are kept: "-imat" versus plain is the evidence for that finding.
+IMATRIX=$OUT/imatrix.dat
+CALIB=${CALIB:-data/processed/calib.txt}
+if [ ! -f "$IMATRIX" ]; then
+  [ -f "$CALIB" ] || PYTHONPATH=src $PY scripts/make_calib_text.py --split train --out "$CALIB"
+  $LLAMA/build-cuda/bin/llama-imatrix -m "$OUT/model-bf16.gguf" -f "$CALIB" -o "$IMATRIX" -ngl 99 --chunks 200
+fi
+for q in Q3_K_M Q2_K; do
+  [ -f "$OUT/model-$q-imat.gguf" ] ||
+    $QUANTIZE --imatrix "$IMATRIX" "$OUT/model-bf16.gguf" "$OUT/model-$q-imat.gguf" "$q"
+done
 ls -la "$OUT"
